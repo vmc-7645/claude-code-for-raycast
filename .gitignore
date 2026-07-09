@@ -1,0 +1,20 @@
+# Node / Raycast extension
+node_modules/
+dist/
+build/
+.raycast/
+*.tsbuildinfo
+
+# Logs / env
+*.log
+.env
+.env.local
+
+# macOS
+.DS_Store
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
