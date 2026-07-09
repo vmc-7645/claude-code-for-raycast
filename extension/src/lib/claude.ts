@@ -5,6 +5,7 @@
 import { runAppleScript } from "@raycast/utils";
 import { Agent } from "./types";
 import { run } from "./exec";
+import { agentMatchesTab } from "./tabmatch";
 
 function shq(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
@@ -40,6 +41,79 @@ export async function forkAgent(a: Agent): Promise<void> {
 
 export async function jumpToGhostty(): Promise<void> {
   await runAppleScript('tell application "Ghostty" to activate');
+}
+
+// Focus the exact Ghostty tab for an agent by matching the tab title (which the
+// tab-status hook sets to "<emoji> <repo>:<branch> — <task>"). Ghostty uses a
+// native AXTabGroup of AXRadioButtons whose titles are those strings. SPEC §8.
+// NOTE: avoid the `tab` keyword inside `tell process` — it shadows a UI-element
+// class and throws -10000. Iterate windows by index with try/exit (list
+// enumeration is also flaky), and delimit fields with "|||".
+const GET_TABS = [
+  'tell application "System Events"',
+  '  tell process "Ghostty"',
+  '    set out to ""',
+  "    set wi to 1",
+  "    repeat 12 times",
+  "      try",
+  "        set w to window wi",
+  "        set tg to first tab group of w",
+  "      on error",
+  "        exit repeat",
+  "      end try",
+  "      set ti to 0",
+  "      repeat with rb in (radio buttons of tg)",
+  "        set ti to ti + 1",
+  "        try",
+  '          set out to out & (wi as text) & "|||" & (ti as text) & "|||" & (title of rb) & linefeed',
+  "        end try",
+  "      end repeat",
+  "      set wi to wi + 1",
+  "    end repeat",
+  "    return out",
+  "  end tell",
+  "end tell",
+].join("\n");
+
+function selectTabScript(win: number, tab: number): string {
+  return [
+    'tell application "Ghostty" to activate',
+    'tell application "System Events"',
+    '  tell process "Ghostty"',
+    `    set w to window ${win}`,
+    '    perform action "AXRaise" of w',
+    `    perform action "AXPress" of (radio button ${tab} of (first tab group of w))`,
+    "  end tell",
+    "end tell",
+  ].join("\n");
+}
+
+
+export async function focusAgentTab(agent: Agent): Promise<boolean> {
+  let raw: string;
+  try {
+    raw = await runAppleScript(GET_TABS);
+  } catch {
+    return false;
+  }
+  for (const line of raw.split("\n")) {
+    const parts = line.split("|||");
+    if (parts.length < 3) continue;
+    const win = parseInt(parts[0], 10);
+    const tab = parseInt(parts[1], 10);
+    const title = parts.slice(2).join("|||");
+    if (Number.isFinite(win) && Number.isFinite(tab) && agentMatchesTab(agent, title)) {
+      await runAppleScript(selectTabScript(win, tab));
+      return true;
+    }
+  }
+  return false;
+}
+
+// Focus the agent's exact tab; fall back to just raising Ghostty if no match.
+export async function focusOrRaise(agent: Agent): Promise<void> {
+  const ok = await focusAgentTab(agent);
+  if (!ok) await jumpToGhostty();
 }
 
 // Open the most-recent session for a directory in a new tab.

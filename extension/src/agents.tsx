@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 import { loadAgents } from "./lib/rank";
 import { cleanupStaleFleet } from "./lib/fleet";
 import { Agent, AgentState } from "./lib/types";
-import { resumeAgent, forkAgent, jumpToGhostty, openUndo, stopAgent } from "./lib/claude";
+import { resumeAgent, forkAgent, focusOrRaise, openUndo, stopAgent } from "./lib/claude";
 
 function timeAgo(ms: number): string {
   if (!ms) return "";
@@ -202,7 +202,11 @@ function AgentItem(props: {
         <ActionPanel>
           {agent.live ? (
             <>
-              <Action title="Jump to Ghostty" icon={Icon.Window} onAction={() => act(jumpToGhostty, "Raised Ghostty")} />
+              <Action
+                title="Focus Tab"
+                icon={Icon.Window}
+                onAction={() => act(() => focusOrRaise(agent), `Focusing ${agent.repo}`)}
+              />
               <Action
                 title="Resume in New Tab"
                 icon={Icon.Terminal}

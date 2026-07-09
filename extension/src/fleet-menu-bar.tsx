@@ -4,7 +4,7 @@
 import { MenuBarExtra, launchCommand, LaunchType, open } from "@raycast/api";
 import { loadAgents } from "./lib/rank";
 import { Agent } from "./lib/types";
-import { jumpToGhostty } from "./lib/claude";
+import { focusOrRaise } from "./lib/claude";
 
 function icon(a: Agent): string {
   switch (a.state) {
@@ -47,7 +47,7 @@ export default function Command() {
             key={a.sessionId}
             title={label(a)}
             subtitle={a.state === "waiting" && a.stateReason ? a.stateReason : undefined}
-            onAction={() => jumpToGhostty()}
+            onAction={() => focusOrRaise(a)}
           />
         ))}
       </MenuBarExtra.Section>
@@ -58,7 +58,7 @@ export default function Command() {
             key={a.sessionId}
             title={label(a)}
             subtitle={a.lastTool}
-            onAction={() => jumpToGhostty()}
+            onAction={() => focusOrRaise(a)}
           />
         ))}
       </MenuBarExtra.Section>
