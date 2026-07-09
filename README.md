@@ -41,8 +41,8 @@ Every dev surface has a one-keystroke "hand it to an agent" action:
 - [x] **M1** — Agents console on Claude's `~/.claude/sessions/` + `projects/` (resume/fork/jump)
 - [x] **M2** — My PRs (→ Review in Claude) + Review PR + Spawn Agent
 - [x] **M0′** — enriched `fleet-register.sh` (waiting/done state, task, diff, last tool) *(in [claude-mac-tweaks](https://github.com/vmc-7645/claude-mac-tweaks); Agents joins it)*
-- [ ] **M3** — Fleet menu bar
-- [ ] **M4** — pending-question, diff detail, delete (careful), `--from-pr`, undo, stop, PR CI status
+- [x] **M3** — Fleet menu bar (needs-you badge + roster)
+- [ ] **M4** — pending-question, diff detail, delete (careful), `--from-pr`, undo, stop, PR CI status, **agent mode (auto/plan)**, **My PRs → check out & work**
 - [ ] **M5** — My Issues, Worktrees, full preferences, GC
 
 ## Dependencies
