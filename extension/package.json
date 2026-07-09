@@ -37,8 +37,7 @@
     },
     {
       "name": "fleet-menu-bar",
-      "title": "Fleet",
-      "subtitle": "Claude Code",
+      "title": "Claude Code Fleet",
       "description": "Menu-bar indicator of Claude agents needing you.",
       "mode": "menu-bar",
       "interval": "1m"
