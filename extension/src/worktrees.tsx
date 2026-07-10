@@ -1,5 +1,5 @@
 // Worktrees — list git worktrees across your repos; open / resume / remove.
-// SPEC §5.8.
+// Merged-into-default branches are flagged as safe to remove. SPEC §5.8.
 
 import {
   List,
@@ -18,7 +18,8 @@ import {
 import { useEffect, useState } from "react";
 import { basename } from "path";
 import { listWorktrees, removeWorktree, Worktree } from "./lib/worktrees";
-import { continueInDir } from "./lib/claude";
+import { continueInDir, openInEditor } from "./lib/claude";
+import { prefs } from "./lib/prefs";
 
 export default function Command() {
   const [wts, setWts] = useState<Worktree[]>([]);
@@ -26,7 +27,7 @@ export default function Command() {
 
   async function load() {
     try {
-      setWts(await listWorktrees());
+      setWts(await listWorktrees(prefs().reposRoot));
     } catch (e) {
       await showToast({ style: Toast.Style.Failure, title: "Failed to load worktrees", message: String(e) });
     } finally {
@@ -56,11 +57,11 @@ export default function Command() {
 }
 
 function WtItem({ wt, onChange }: { wt: Worktree; onChange: () => void }) {
-  async function openClaude() {
+  async function run(fn: () => Promise<void>, hud: string) {
     await closeMainWindow();
     try {
-      await continueInDir(wt.path);
-      await showHUD(`Opening ${wt.branch || basename(wt.path)}`);
+      await fn();
+      await showHUD(hud);
     } catch (e) {
       await showHUD(`❌ ${String(e).slice(0, 80)}`);
     }
@@ -82,17 +83,28 @@ function WtItem({ wt, onChange }: { wt: Worktree; onChange: () => void }) {
     }
   }
 
-  const accessories: List.Item.Accessory[] = [{ text: wt.path.replace(process.env.HOME || "", "~") }];
-  if (wt.isMain) accessories.unshift({ tag: { value: "main", color: Color.SecondaryText } });
+  const accessories: List.Item.Accessory[] = [];
+  if (wt.isMain) accessories.push({ tag: { value: "main", color: Color.SecondaryText } });
+  if (wt.merged) accessories.push({ tag: { value: "merged", color: Color.Green } });
+  accessories.push({ text: wt.path.replace(process.env.HOME || "", "~") });
 
   return (
     <List.Item
-      icon={wt.isMain ? "🌳" : "🌿"}
+      icon={wt.isMain ? "🌳" : wt.merged ? "🍂" : "🌿"}
       title={wt.branch || basename(wt.path)}
       accessories={accessories}
       actions={
         <ActionPanel>
-          <Action title="Open in Claude" icon={Icon.Terminal} onAction={openClaude} />
+          <Action
+            title="Open in Claude"
+            icon={Icon.Terminal}
+            onAction={() => run(() => continueInDir(wt.path), `Opening ${wt.branch || basename(wt.path)}`)}
+          />
+          <Action
+            title="Open in Editor"
+            icon={Icon.Code}
+            onAction={() => run(() => openInEditor(wt.path, prefs().editorCommand || "code"), "Opening editor")}
+          />
           <Action title="Open Folder" icon={Icon.Folder} onAction={() => open(wt.path)} />
           {!wt.isMain && (
             <Action title="Remove Worktree" icon={Icon.Trash} style={Action.Style.Destructive} onAction={remove} />

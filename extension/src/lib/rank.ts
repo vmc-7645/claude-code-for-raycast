@@ -43,6 +43,7 @@ export function loadAgents(): { active: Agent[]; recent: Agent[] } {
       diff: fleet?.diff || undefined,
       lastTool: state === "working" ? fleet?.lastTool : undefined,
       mode: fleet?.mode || undefined,
+      question: m?.lastMessage || undefined,
       pid: s.pid,
       updatedAt: s.updatedAt || m?.updatedAt || 0,
     };
@@ -61,6 +62,7 @@ export function loadAgents(): { active: Agent[]; recent: Agent[] } {
       state: "idle",
       updatedAt: m.updatedAt,
       turns: m.turns,
+      question: m.lastMessage || undefined,
     });
   }
 

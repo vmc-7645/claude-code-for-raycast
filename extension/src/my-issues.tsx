@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { searchMyIssues, Issue } from "./lib/gh";
 import { spawnAgent } from "./lib/claude";
 import { repoPath } from "./lib/repos";
+import { prefs } from "./lib/prefs";
 
 export default function Command() {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -34,7 +35,7 @@ export default function Command() {
 }
 
 function IssueItem({ issue }: { issue: Issue }) {
-  const local = repoPath(issue.repo);
+  const local = repoPath(issue.repo, prefs().reposRoot);
 
   async function startAgent() {
     if (!local) {

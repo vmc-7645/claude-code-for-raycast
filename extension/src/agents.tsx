@@ -7,6 +7,7 @@ import {
   Action,
   Icon,
   Color,
+  Form,
   showToast,
   Toast,
   showHUD,
@@ -14,12 +15,24 @@ import {
   open,
   confirmAlert,
   Alert,
+  useNavigation,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { loadAgents } from "./lib/rank";
 import { cleanupStaleFleet } from "./lib/fleet";
+import { prefs } from "./lib/prefs";
 import { Agent, AgentState } from "./lib/types";
-import { resumeAgent, forkAgent, focusOrRaise, openUndo, stopAgent } from "./lib/claude";
+import {
+  resumeAgent,
+  forkAgent,
+  focusOrRaise,
+  openUndo,
+  stopAgent,
+  closeAgentTab,
+  nudgeAgent,
+  resumeCommand,
+  openInEditor,
+} from "./lib/claude";
 
 function timeAgo(ms: number): string {
   if (!ms) return "";
@@ -68,6 +81,7 @@ export default function Command() {
   const [recent, setRecent] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDetail, setShowDetail] = useState(false);
+  const [scope, setScope] = useState("all");
 
   function refresh() {
     try {
@@ -93,29 +107,74 @@ export default function Command() {
     await showToast({ style: Toast.Style.Success, title: `Cleaned up ${n} stale fleet file(s)` });
   }
 
-  const empty = !isLoading && active.length === 0 && recent.length === 0;
+  const repos = Array.from(new Set([...active, ...recent].map((a) => a.repo))).sort();
+  const inScope = (a: Agent) =>
+    scope === "all" ||
+    (scope === "active" && a.live) ||
+    (scope === "recent" && !a.live) ||
+    (scope.startsWith("repo:") && a.repo === scope.slice(5));
 
-  const shared = {
-    onRefresh: refresh,
-    showDetail,
-    toggleDetail: () => setShowDetail((v) => !v),
-    cleanUp,
-  };
+  const shownActive = active.filter((a) => a.live && (scope === "all" || scope === "active" || inScope(a)));
+  const shownRecent = recent.filter((a) => !a.live && (scope === "all" || scope === "recent" || inScope(a)));
+  const empty = !isLoading && shownActive.length === 0 && shownRecent.length === 0;
+
+  const shared = { onRefresh: refresh, showDetail, toggleDetail: () => setShowDetail((v) => !v), cleanUp };
 
   return (
-    <List isLoading={isLoading} isShowingDetail={showDetail} searchBarPlaceholder="Search agents by repo or title…">
+    <List
+      isLoading={isLoading}
+      isShowingDetail={showDetail}
+      searchBarPlaceholder="Search agents by repo or title…"
+      searchBarAccessory={
+        <List.Dropdown tooltip="Scope" value={scope} onChange={setScope}>
+          <List.Dropdown.Item title="All" value="all" />
+          <List.Dropdown.Item title="Active" value="active" />
+          <List.Dropdown.Item title="Recent" value="recent" />
+          <List.Dropdown.Section title="Repo">
+            {repos.map((r) => (
+              <List.Dropdown.Item key={r} title={r} value={`repo:${r}`} />
+            ))}
+          </List.Dropdown.Section>
+        </List.Dropdown>
+      }
+    >
       {empty && <List.EmptyView icon="🤖" title="No Claude agents" description="Start one and it'll appear here." />}
-      <List.Section title={`Active (${active.length})`}>
-        {active.map((a) => (
+      <List.Section title={`Active (${shownActive.length})`}>
+        {shownActive.map((a) => (
           <AgentItem key={a.sessionId} agent={a} {...shared} />
         ))}
       </List.Section>
-      <List.Section title={`Recent (${recent.length})`}>
-        {recent.map((a) => (
+      <List.Section title={`Recent (${shownRecent.length})`}>
+        {shownRecent.map((a) => (
           <AgentItem key={a.sessionId} agent={a} {...shared} />
         ))}
       </List.Section>
     </List>
+  );
+}
+
+function NudgeForm({ agent }: { agent: Agent }) {
+  async function onSubmit(values: Form.Values) {
+    const text = String(values.text || "").trim();
+    if (!text) return;
+    await closeMainWindow();
+    try {
+      const ok = await nudgeAgent(agent, text);
+      await showHUD(ok ? `Sent to ${agent.repo}` : "Tab not found");
+    } catch (e) {
+      await showHUD(`❌ ${String(e).slice(0, 80)}`);
+    }
+  }
+  return (
+    <Form
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm title="Send to Agent" icon={Icon.Message} onSubmit={onSubmit} />
+        </ActionPanel>
+      }
+    >
+      <Form.TextArea id="text" title={`Nudge ${agent.repo}`} placeholder="follow-up to type into the agent's tab…" />
+    </Form>
   );
 }
 
@@ -127,7 +186,9 @@ function AgentItem(props: {
   cleanUp: () => Promise<void>;
 }) {
   const { agent, onRefresh, showDetail, toggleDetail, cleanUp } = props;
+  const { push } = useNavigation();
   const mode = modeLabel(agent.mode);
+  const p = prefs();
 
   const ageLabel = agent.live
     ? `${agent.state} · ${timeAgo(agent.updatedAt)}`
@@ -145,8 +206,6 @@ function AgentItem(props: {
   accessories.push({ text: ageLabel });
 
   async function act(fn: () => Promise<void>, hud: string) {
-    // Close Raycast FIRST so keyboard focus leaves its panel — otherwise the
-    // ⌘T/keystrokes we send to Ghostty are swallowed by Raycast's window.
     await closeMainWindow();
     try {
       await fn();
@@ -173,8 +232,27 @@ function AgentItem(props: {
     }
   }
 
+  async function doClose() {
+    const ok = await confirmAlert({
+      title: `Close ${agent.repo} tab?`,
+      message: "Closes the agent's Ghostty tab (ends the session).",
+      primaryAction: { title: "Close Tab", style: Alert.ActionStyle.Destructive },
+    });
+    if (!ok) return;
+    await closeMainWindow();
+    try {
+      const found = await closeAgentTab(agent);
+      await showHUD(found ? `Closed ${agent.repo}` : "Tab not found");
+      onRefresh();
+    } catch (e) {
+      await showHUD(`❌ ${String(e).slice(0, 80)}`);
+    }
+  }
+
+  const markdown = agent.question ? `**Last message**\n\n${agent.question}` : "_No message captured yet._";
   const detail = (
     <List.Item.Detail
+      markdown={markdown}
       metadata={
         <List.Item.Detail.Metadata>
           <List.Item.Detail.Metadata.Label title="Repo" text={agent.repo} />
@@ -193,6 +271,17 @@ function AgentItem(props: {
     />
   );
 
+  const focusAction = (
+    <Action title="Focus Tab" icon={Icon.Window} onAction={() => act(() => focusOrRaise(agent), `Focusing ${agent.repo}`)} />
+  );
+  const resumeAction = (
+    <Action
+      title="Resume in New Tab"
+      icon={Icon.Terminal}
+      onAction={() => act(() => resumeAgent(agent), `Resuming ${agent.repo}`)}
+    />
+  );
+
   return (
     <List.Item
       icon={agentIcon(agent)}
@@ -204,27 +293,22 @@ function AgentItem(props: {
         <ActionPanel>
           {agent.live ? (
             <>
+              {p.primaryClick === "resume" ? resumeAction : focusAction}
+              {p.primaryClick === "resume" ? focusAction : resumeAction}
               <Action
-                title="Focus Tab"
-                icon={Icon.Window}
-                onAction={() => act(() => focusOrRaise(agent), `Focusing ${agent.repo}`)}
-              />
-              <Action
-                title="Resume in New Tab"
-                icon={Icon.Terminal}
-                onAction={() => act(() => resumeAgent(agent), `Resuming ${agent.repo}`)}
+                title="Nudge / Send Prompt"
+                icon={Icon.Message}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+                onAction={() => push(<NudgeForm agent={agent} />)}
               />
               {agent.state === "working" && (
                 <Action title="Stop Agent" icon={Icon.Stop} style={Action.Style.Destructive} onAction={doStop} />
               )}
+              <Action title="Close Tab" icon={Icon.XMarkCircle} style={Action.Style.Destructive} onAction={doClose} />
             </>
           ) : (
             <>
-              <Action
-                title="Resume in New Tab"
-                icon={Icon.Terminal}
-                onAction={() => act(() => resumeAgent(agent), `Resuming ${agent.repo}`)}
-              />
+              {resumeAction}
               <Action
                 title="Fork Session"
                 icon={Icon.Duplicate}
@@ -242,6 +326,16 @@ function AgentItem(props: {
             title="Undo Last Turn"
             icon={Icon.ArrowCounterClockwise}
             onAction={() => act(() => openUndo(agent.cwd), "Opened claude-undo")}
+          />
+          <Action.CopyToClipboard
+            title="Copy Resume Command"
+            content={resumeCommand(agent)}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+          />
+          <Action
+            title="Open in Editor"
+            icon={Icon.Code}
+            onAction={() => act(() => openInEditor(agent.cwd, p.editorCommand || "code"), "Opening editor")}
           />
           <Action title="Open Folder" icon={Icon.Folder} onAction={() => open(agent.cwd)} />
           <Action.CopyToClipboard title="Copy Session ID" content={agent.sessionId} />

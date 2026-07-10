@@ -4,6 +4,7 @@
 import { LaunchProps, showToast, Toast, showHUD, closeMainWindow } from "@raycast/api";
 import { reviewPR } from "./lib/claude";
 import { repoPath } from "./lib/repos";
+import { prefs } from "./lib/prefs";
 
 interface Args {
   pr: string;
@@ -27,7 +28,7 @@ export default async function Command(props: LaunchProps<{ arguments: Args }>) {
     return;
   }
 
-  const local = repoPath(repoName);
+  const local = repoPath(repoName, prefs().reposRoot);
   if (!local) {
     await showToast({ style: Toast.Style.Failure, title: "Repo not found locally", message: repoName });
     return;

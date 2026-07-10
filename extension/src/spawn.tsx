@@ -5,6 +5,7 @@ import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWi
 import { useState } from "react";
 import { listRepos, reposConfig } from "./lib/repos";
 import { spawnAgent } from "./lib/claude";
+import { prefs } from "./lib/prefs";
 
 function slug(task: string): string {
   const s = task
@@ -17,8 +18,9 @@ function slug(task: string): string {
 }
 
 export default function Command() {
-  const repos = listRepos();
-  const { defaultRepo } = reposConfig();
+  const root = prefs().reposRoot;
+  const repos = listRepos(root);
+  const { defaultRepo } = reposConfig(root);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(values: Form.Values) {

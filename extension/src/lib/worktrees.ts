@@ -9,6 +9,36 @@ export interface Worktree {
   branch: string;
   isMain: boolean;
   mainPath: string; // the repo's primary worktree (where `remove` is run from)
+  merged: boolean; // branch is merged into the repo's default branch (safe to remove)
+}
+
+// Branches merged into the repo's default branch (main/master).
+async function mergedBranches(mainPath: string): Promise<Set<string>> {
+  let def = "";
+  try {
+    def = (await run("git", ["-C", mainPath, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"]))
+      .trim()
+      .replace(/^origin\//, "");
+  } catch {
+    for (const c of ["main", "master"]) {
+      try {
+        await run("git", ["-C", mainPath, "rev-parse", "--verify", c]);
+        def = c;
+        break;
+      } catch {
+        // try next
+      }
+    }
+  }
+  if (!def) return new Set();
+  try {
+    const out = await run("git", ["-C", mainPath, "branch", "--merged", def, "--format=%(refname:short)"]);
+    const set = new Set(out.split("\n").map((s) => s.trim().replace(/^\* /, "")).filter(Boolean));
+    set.delete(def);
+    return set;
+  } catch {
+    return new Set();
+  }
 }
 
 export async function listWorktrees(overrideRoot?: string): Promise<Worktree[]> {
@@ -21,10 +51,14 @@ export async function listWorktrees(overrideRoot?: string): Promise<Worktree[]> 
     } catch {
       continue;
     }
+    const merged = await mergedBranches(r.path);
     let path = "";
     let branch = "";
     const flush = () => {
-      if (path) out.push({ repo: r.name, path, branch, isMain: path === r.path, mainPath: r.path });
+      if (path) {
+        const isMain = path === r.path;
+        out.push({ repo: r.name, path, branch, isMain, mainPath: r.path, merged: !isMain && merged.has(branch) });
+      }
       path = "";
       branch = "";
     };

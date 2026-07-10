@@ -16,6 +16,7 @@ export interface Agent {
   diff?: string; // git diff --shortstat, when known
   lastTool?: string; // last tool + target while working
   mode?: string; // permission mode: default | plan | acceptEdits | bypassPermissions
+  question?: string; // last assistant message (the pending ask)
   pid?: number;
   updatedAt: number; // epoch ms
   turns?: number; // recent only

@@ -1,33 +1,31 @@
-// My PRs — cross-repo list of your open PRs; each row → Review in Claude.
-// SPEC §5.2.
+// My PRs — cross-repo list of your open PRs with CI status; each row → Review in
+// Claude / Check out & work / Resume PR agent. SPEC §5.2.
 
-import {
-  List,
-  ActionPanel,
-  Action,
-  Icon,
-  Color,
-  showToast,
-  Toast,
-  showHUD,
-  closeMainWindow,
-} from "@raycast/api";
+import { List, ActionPanel, Action, Icon, Color, showToast, Toast, showHUD, closeMainWindow } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { searchMyPRs, PR } from "./lib/gh";
+import { searchMyPRs, prCiStatus, PR, CiStatus } from "./lib/gh";
 import { reviewPR, checkoutAndWork, resumeFromPr } from "./lib/claude";
 import { repoPath } from "./lib/repos";
+import { prefs } from "./lib/prefs";
 
 export default function Command() {
   const [prs, setPrs] = useState<PR[]>([]);
+  const [ci, setCi] = useState<Record<string, CiStatus>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        setPrs(await searchMyPRs());
+        const list = await searchMyPRs();
+        setPrs(list);
+        setIsLoading(false);
+        // CI status per PR, in parallel (one gh call each).
+        const entries = await Promise.all(
+          list.map(async (p) => [p.url, await prCiStatus(p.repo, p.number)] as const),
+        );
+        setCi(Object.fromEntries(entries));
       } catch (e) {
         await showToast({ style: Toast.Style.Failure, title: "Failed to load PRs", message: String(e) });
-      } finally {
         setIsLoading(false);
       }
     })();
@@ -37,21 +35,33 @@ export default function Command() {
     <List isLoading={isLoading} searchBarPlaceholder="Search your open PRs…">
       {!isLoading && prs.length === 0 && <List.EmptyView icon="🔀" title="No open PRs" />}
       {prs.map((pr) => (
-        <PRItem key={pr.url} pr={pr} />
+        <PRItem key={pr.url} pr={pr} ci={ci[pr.url]} />
       ))}
     </List>
   );
 }
 
-function PRItem({ pr }: { pr: PR }) {
-  const local = repoPath(pr.repo);
+function ciAccessory(ci?: CiStatus): List.Item.Accessory | undefined {
+  switch (ci) {
+    case "pass":
+      return { icon: { source: Icon.CheckCircle, tintColor: Color.Green }, tooltip: "checks passing" };
+    case "fail":
+      return { icon: { source: Icon.XMarkCircle, tintColor: Color.Red }, tooltip: "checks failing" };
+    case "pending":
+      return { icon: { source: Icon.Clock, tintColor: Color.Yellow }, tooltip: "checks running" };
+    default:
+      return undefined;
+  }
+}
+
+function PRItem({ pr, ci }: { pr: PR; ci?: CiStatus }) {
+  const local = repoPath(pr.repo, prefs().reposRoot);
 
   async function withLocal(fn: (path: string) => Promise<void>, hud: string) {
     if (!local) {
       await showToast({ style: Toast.Style.Failure, title: "Repo not cloned locally", message: pr.repo });
       return;
     }
-    // Close Raycast first so keystrokes reach Ghostty, not Raycast's panel.
     await closeMainWindow();
     try {
       await fn(local);
@@ -61,8 +71,11 @@ function PRItem({ pr }: { pr: PR }) {
     }
   }
 
-  const accessories: List.Item.Accessory[] = [{ text: pr.repo }];
-  if (pr.isDraft) accessories.unshift({ tag: { value: "draft", color: Color.SecondaryText } });
+  const accessories: List.Item.Accessory[] = [];
+  const c = ciAccessory(ci);
+  if (c) accessories.push(c);
+  if (pr.isDraft) accessories.push({ tag: { value: "draft", color: Color.SecondaryText } });
+  accessories.push({ text: pr.repo });
 
   return (
     <List.Item

@@ -116,6 +116,33 @@ export async function focusOrRaise(agent: Agent): Promise<void> {
   if (!ok) await jumpToGhostty();
 }
 
+// Close the agent's Ghostty tab (focus it, then ⌘W).
+export async function closeAgentTab(agent: Agent): Promise<boolean> {
+  const ok = await focusAgentTab(agent);
+  if (!ok) return false;
+  await runAppleScript('tell application "System Events" to keystroke "w" using {command down}');
+  return true;
+}
+
+// Type a follow-up prompt into the agent's tab (focus it, then type + Return).
+export async function nudgeAgent(agent: Agent, text: string): Promise<boolean> {
+  const ok = await focusAgentTab(agent);
+  if (!ok) return false;
+  await runAppleScript(
+    ['tell application "System Events"', `  keystroke ${asStr(text)}`, "  key code 36", "end tell"].join("\n"),
+  );
+  return true;
+}
+
+export function resumeCommand(agent: Agent): string {
+  return `cd ${shq(agent.cwd)} && claude --resume ${agent.sessionId}`;
+}
+
+// Open a folder in the configured editor (e.g. `code <path>`).
+export async function openInEditor(path: string, editorCmd: string): Promise<void> {
+  await run(editorCmd, [path]);
+}
+
 // Open the most-recent session for a directory in a new tab.
 export async function continueInDir(cwd: string): Promise<void> {
   await openInGhosttyTab(cwd, "claude --continue");

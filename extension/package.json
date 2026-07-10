@@ -6,6 +6,36 @@
   "icon": "icon.png",
   "author": "vmc-7645",
   "license": "MIT",
+  "preferences": [
+    {
+      "name": "primaryClick",
+      "type": "dropdown",
+      "title": "Agent primary action",
+      "description": "What Enter does on a live agent in the Agents list.",
+      "default": "focus",
+      "required": false,
+      "data": [
+        { "title": "Focus Tab", "value": "focus" },
+        { "title": "Resume in New Tab", "value": "resume" }
+      ]
+    },
+    {
+      "name": "editorCommand",
+      "type": "textfield",
+      "title": "Editor command",
+      "description": "CLI command to open a folder in your editor (e.g. code, cursor). Must be on PATH.",
+      "default": "code",
+      "required": false
+    },
+    {
+      "name": "reposRoot",
+      "type": "textfield",
+      "title": "Repos directory",
+      "description": "Override where repos are discovered. Blank = use ~/.config/claude-mac-tweaks/repos.env or ~/Repos.",
+      "default": "",
+      "required": false
+    }
+  ],
   "commands": [
     {
       "name": "agents",
