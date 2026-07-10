@@ -90,24 +90,33 @@ function selectTabScript(win: number, tab: number): string {
 
 
 export async function focusAgentTab(agent: Agent): Promise<boolean> {
-  let raw: string;
-  try {
-    raw = await runAppleScript(GET_TABS);
-  } catch {
-    return false;
+  // Enumeration can hit a flaky System Events -10000; retry a few times.
+  let raw = "";
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      raw = await runAppleScript(GET_TABS);
+      if (raw.trim()) break;
+    } catch (e) {
+      console.error(`[focus] GET_TABS attempt ${attempt} error: ${String(e).slice(0, 120)}`);
+    }
   }
-  for (const line of raw.split("\n")) {
+  const lines = raw.split("\n").filter((l) => l.includes("|||"));
+  for (const line of lines) {
     const parts = line.split("|||");
     if (parts.length < 3) continue;
     const win = parseInt(parts[0], 10);
     const tab = parseInt(parts[1], 10);
     const title = parts.slice(2).join("|||");
     if (Number.isFinite(win) && Number.isFinite(tab) && agentMatchesTab(agent, title)) {
-      await runAppleScript(selectTabScript(win, tab));
-      return true;
+      try {
+        await runAppleScript(selectTabScript(win, tab));
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
-  return false;
+  return false; // no tab matched → caller raises Ghostty
 }
 
 // Focus the agent's exact tab; fall back to just raising Ghostty if no match.
