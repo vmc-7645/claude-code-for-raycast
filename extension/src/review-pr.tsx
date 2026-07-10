@@ -1,22 +1,24 @@
-// Review PR — pick a repo (dynamic, recency-sorted) + PR number, open Claude to
-// review it. SPEC §5.4.
+// Review PR — pick a repo (local or remote) + PR number, open Claude to review
+// it. Remote repos are cloned on demand. SPEC §5.4.
 
 import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWindow, popToRoot } from "@raycast/api";
 import { useState } from "react";
-import { listRepos, reposConfig } from "./lib/repos";
+import { reposConfig, resolveRepoPath } from "./lib/repos";
+import { useRepoOptions, RepoDropdown } from "./lib/repo-field";
 import { reviewPR } from "./lib/claude";
 import { prefs } from "./lib/prefs";
+import { basename } from "path";
 
 export default function Command() {
   const root = prefs().reposRoot;
-  const repos = listRepos(root);
+  const options = useRepoOptions(root);
   const { defaultRepo } = reposConfig(root);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(values: Form.Values) {
-    const repo = repos.find((r) => r.name === String(values.repo || ""));
+    const repoValue = String(values.repo || "");
     const n = parseInt(String(values.pr || ""), 10);
-    if (!repo) {
+    if (!repoValue) {
       await showToast({ style: Toast.Style.Failure, title: "Pick a repo" });
       return;
     }
@@ -27,8 +29,11 @@ export default function Command() {
     setLoading(true);
     await closeMainWindow();
     try {
-      await reviewPR(repo.path, n);
-      await showHUD(`Reviewing ${repo.name}#${n}`);
+      if (repoValue.includes("/")) await showHUD(`Cloning ${repoValue}…`);
+      const path = await resolveRepoPath(repoValue, root);
+      if (!path) throw new Error("repo not found");
+      await reviewPR(path, n);
+      await showHUD(`Reviewing ${basename(path)}#${n}`);
       await popToRoot();
     } catch (e) {
       await showHUD(`❌ ${String(e).slice(0, 80)}`);
@@ -46,11 +51,7 @@ export default function Command() {
       }
     >
       <Form.TextField id="pr" title="PR Number" placeholder="e.g. 349" />
-      <Form.Dropdown id="repo" title="Repo" defaultValue={defaultRepo || repos[0]?.name}>
-        {repos.map((r) => (
-          <Form.Dropdown.Item key={r.name} value={r.name} title={r.name} />
-        ))}
-      </Form.Dropdown>
+      <RepoDropdown id="repo" options={options} defaultRepo={defaultRepo} />
     </Form>
   );
 }

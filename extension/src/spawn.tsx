@@ -1,11 +1,13 @@
 // Spawn Agent — pick a repo, give a task (+optional branch), and launch an
 // agent in a fresh worktree. SPEC §5.3.
 
-import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWindow, popToRoot } from "@raycast/api";
+import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWindow } from "@raycast/api";
 import { useState } from "react";
-import { listRepos, reposConfig } from "./lib/repos";
+import { reposConfig, resolveRepoPath } from "./lib/repos";
+import { useRepoOptions, RepoDropdown } from "./lib/repo-field";
 import { spawnAgent } from "./lib/claude";
 import { prefs } from "./lib/prefs";
+import { basename } from "path";
 
 function slug(task: string): string {
   const s = task
@@ -19,16 +21,15 @@ function slug(task: string): string {
 
 export default function Command() {
   const root = prefs().reposRoot;
-  const repos = listRepos(root);
+  const options = useRepoOptions(root);
   const { defaultRepo } = reposConfig(root);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(values: Form.Values) {
-    const repoName = String(values.repo || "");
+    const repoValue = String(values.repo || "");
     const task = String(values.task || "").trim();
     const branchIn = String(values.branch || "").trim();
-    const repo = repos.find((r) => r.name === repoName);
-    if (!repo) {
+    if (!repoValue) {
       await showToast({ style: Toast.Style.Failure, title: "Pick a repo" });
       return;
     }
@@ -36,8 +37,11 @@ export default function Command() {
     setLoading(true);
     await closeMainWindow();
     try {
-      await spawnAgent(repo.path, branch, task || undefined);
-      await showHUD(`Spawned ${repo.name}:${branch}`);
+      if (repoValue.includes("/")) await showHUD(`Cloning ${repoValue}…`);
+      const path = await resolveRepoPath(repoValue, root);
+      if (!path) throw new Error("repo not found");
+      await spawnAgent(path, branch, task || undefined);
+      await showHUD(`Spawned ${basename(path)}:${branch}`);
     } catch (e) {
       await showHUD(`❌ ${String(e).slice(0, 80)}`);
       setLoading(false);
@@ -53,11 +57,7 @@ export default function Command() {
         </ActionPanel>
       }
     >
-      <Form.Dropdown id="repo" title="Repo" defaultValue={defaultRepo}>
-        {repos.map((r) => (
-          <Form.Dropdown.Item key={r.name} value={r.name} title={r.name} />
-        ))}
-      </Form.Dropdown>
+      <RepoDropdown id="repo" options={options} defaultRepo={defaultRepo} />
       <Form.TextField id="task" title="Task" placeholder="what should the agent do?" />
       <Form.TextField id="branch" title="Branch" placeholder="optional — defaults to agent/<slug>" />
     </Form>

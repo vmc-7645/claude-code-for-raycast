@@ -5,6 +5,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
+import { run } from "./exec";
 
 export interface Repo {
   name: string;
@@ -12,7 +13,15 @@ export interface Repo {
   mtime: number; // recency signal (max of dir / .git / .git/HEAD mtime)
 }
 
+// A repo on GitHub you can access but may not have cloned yet.
+export interface RemoteRepo {
+  nameWithOwner: string; // owner/name — also the dropdown value
+  name: string;
+  pushedAt: string; // ISO; used for recency sort
+}
+
 const MAX_REPOS = 50;
+const MAX_REMOTE = 300; // guard a pathological account; recency-sorted first
 
 function recency(path: string): number {
   let m = 0;
@@ -72,4 +81,54 @@ export function repoPath(nameOrOwnerRepo: string, overrideRoot?: string): string
   const name = nameOrOwnerRepo.includes("/") ? nameOrOwnerRepo.split("/").pop()! : nameOrOwnerRepo;
   const p = join(root, name);
   return existsSync(join(p, ".git")) ? p : undefined;
+}
+
+interface RawRemote {
+  full_name?: string;
+  name?: string;
+  pushed_at?: string;
+}
+
+// Every repo you can access on GitHub (owned, collaborator, org member), most
+// recently pushed first. One `gh api` call; capped so a huge account stays sane.
+export async function listRemoteRepos(): Promise<RemoteRepo[]> {
+  let out: string;
+  try {
+    out = await run("gh", [
+      "api",
+      "--paginate",
+      "/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member",
+    ]);
+  } catch {
+    return []; // not authed / offline — remote tier just stays empty
+  }
+  let rows: RawRemote[] = [];
+  try {
+    rows = JSON.parse(out) as RawRemote[]; // gh merges paginated arrays into one
+  } catch {
+    return [];
+  }
+  return rows
+    .filter((r) => r.full_name)
+    .map((r) => ({ nameWithOwner: r.full_name!, name: r.name || r.full_name!.split("/").pop()!, pushedAt: r.pushed_at || "" }))
+    .sort((a, b) => b.pushedAt.localeCompare(a.pushedAt))
+    .slice(0, MAX_REMOTE);
+}
+
+// Clone a remote repo into the repos root (idempotent) and return its local path.
+export async function cloneRepo(nameWithOwner: string, overrideRoot?: string): Promise<string> {
+  const { root } = reposConfig(overrideRoot);
+  const name = nameWithOwner.split("/").pop()!;
+  const target = join(root, name);
+  if (existsSync(join(target, ".git"))) return target; // already have it
+  await run("gh", ["repo", "clone", nameWithOwner, target]);
+  return target;
+}
+
+// Resolve a dropdown value to a local path. Bare name → existing local repo;
+// "owner/name" → a remote repo, cloned on demand. Returns undefined if a local
+// value doesn't resolve.
+export async function resolveRepoPath(value: string, overrideRoot?: string): Promise<string | undefined> {
+  if (value.includes("/")) return cloneRepo(value, overrideRoot);
+  return repoPath(value, overrideRoot);
 }
