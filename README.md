@@ -1,13 +1,6 @@
 <div align="center">
 
-<img src="extension/assets/icon.png" width="104" alt="Claude Fleet" />
-
-# Claude Fleet
-
-**Your Claude Code agents, PRs, and worktrees — one keystroke away.**
-
-See every dev surface in Raycast and hand any of it to an agent,
-landing in a Ghostty tab. Plus an ambient menu-bar read on who needs you.
+<img src="docs/hero.svg" alt="Claude Fleet" width="760">
 
 <p>
   <img alt="License MIT"        src="https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square" />
@@ -15,6 +8,9 @@ landing in a Ghostty tab. Plus an ambient menu-bar read on who needs you.
   <img alt="Raycast extension"  src="https://img.shields.io/badge/Raycast-extension-FF6363?style=flat-square&logo=raycast&logoColor=white" />
   <img alt="Terminal Ghostty"   src="https://img.shields.io/badge/terminal-Ghostty-1d4ed8?style=flat-square" />
 </p>
+
+See your Claude Code agents, PRs, and worktrees in Raycast — and hand any of them
+to an agent in one keystroke. Plus an ambient menu-bar read on **who needs you**.
 
 </div>
 
@@ -34,18 +30,19 @@ a terminal to start work; start it from wherever you already are.
 
 ## Commands
 
-Twelve commands, grouped by what you reach for.
+Thirteen commands, grouped by what you reach for.
 
 #### 🤖 Agents & fleet
 | Command | Mode | What it does |
 |---|---|---|
-| **Agents** | list | Active (live) + Recent (history) console. Per agent: **Focus Tab** (jumps to the exact Ghostty tab), Resume, Fork, **Nudge** (type a follow-up into its tab), **Close Tab**, Undo last turn, Stop, copy resume command, open in editor/folder. Detail pane (⌘I) shows the pending question + mode/state/diff. **Scope** dropdown (All / Active / Recent / per-repo). |
-| **Claude Code Fleet** | menu bar | Needs-you count badge + roster; click an agent to focus its tab. Refreshes every minute. |
+| **Agents** | list | Active (live) + Recent (history) console. Per agent: **Focus Tab** (jumps to the exact Ghostty tab), Resume, Fork, **Nudge** / **Quick Reply** (send a canned follow-up into its tab), **Close Tab**, Undo last turn, Stop, open in editor/folder. Detail pane (⌘I) shows the pending question + mode/state/diff. **Scope** dropdown (All / Active / Recent / per-repo). |
+| **Fleet** | menu bar | Needs-you count badge + roster; click an agent to focus its tab. Refreshes every minute. |
 
 #### 🔀 PRs, issues & worktrees
 | Command | Mode | What it does |
 |---|---|---|
-| **My PRs** | list | Cross-repo open PRs with **CI status** (✅ / ❌ / ⏳). Per PR: **Review in Claude**, **Check Out & Work** (worktree agent, or opens the existing worktree if the branch is already checked out), **Resume PR agent** (`--from-pr`). |
+| **My PRs** | list | Your cross-repo open PRs with **CI status** (✅ / ❌ / ⏳). Per PR: **Review in Claude**, **Check Out & Work**, **Resume PR agent** (`--from-pr`). |
+| **PRs to Review** | list | PRs where someone **requested your review** (cross-repo, with CI + author) → **Review in Claude** (`/review`), cloning the repo on demand. |
 | **My Issues** | list | Cross-repo open issues → start an agent seeded with the issue. |
 | **Review PR** | form | Type a PR number + pick a repo → `claude /review`. |
 | **Worktrees** | list | Worktrees across repos; open / resume / **remove**; merged branches flagged 🍂. |
@@ -67,32 +64,34 @@ Twelve commands, grouped by what you reach for.
 > Repo pickers (Review PR · New Session · Spawn) are recency-sorted: your **local** repos first,
 > then everything you can access on **GitHub** — remote picks are cloned on demand.
 
-## Focus Tab — how it works
+## Setup
 
-The `tab-status` hook titles each Ghostty tab `<emoji> <repo>:<branch> — <task>`. Ghostty exposes
-tabs as a native `AXTabGroup` of `AXRadioButton`s (titles = those strings), so the extension
-matches an agent to its tab by title and `AXPress`es it — jumping you straight there. No match →
-it just raises Ghostty. (Enumeration is retried; System Events occasionally throws a flaky `-10000`.)
-
-## Quick start
+**Prerequisites:** macOS · [Raycast](https://raycast.com) · [Claude Code](https://claude.com/claude-code) · [`gh`](https://cli.github.com) · `git` · `jq` · a terminal ([Ghostty](https://ghostty.org) recommended)
 
 ```sh
-# 1 — install the shell commands + hooks, and wire them into ~/.claude/settings.json
-helpers/install.sh          # idempotent; backs settings.json up first
+# 1 — clone
+git clone https://github.com/vmc-7645/claude-fleet.git && cd claude-fleet
 
-# 2 — auth gh for My PRs / My Issues
+# 2 — install the shell helpers + hooks (idempotent; wires ~/.claude/settings.json, backs it up first)
+helpers/install.sh
+
+# 3 — sign in to GitHub (for My PRs / PRs to Review / My Issues)
 gh auth login
 
-# 3 — load the extension into Raycast (persists after you stop the dev server)
+# 4 — load the extension into Raycast (persists after you stop the dev server)
 cd extension && npm ci && npm run dev
 ```
 
-4. **Restart Claude Code** so the new hooks load.
-5. **Grant Raycast Accessibility** — System Settings → Privacy & Security → Accessibility → enable
-   Raycast. Required for the ⌘T / keystroke / tab-focus actions; `gh` reads work without it.
+Then two one-time steps:
+
+1. **Restart Claude Code** so the new hooks load.
+2. **Grant Raycast Accessibility** — System Settings → Privacy & Security → Accessibility → enable
+   **Raycast**. Needed for the tab-focus / keystroke actions; `gh` reads work without it.
+
+That's it — open Raycast and search **Claude Fleet**.
 
 <details>
-<summary><strong>Preferences</strong> (Raycast → Extensions → Claude Code → ⚙️)</summary>
+<summary><strong>Preferences</strong> (Raycast → Extensions → Claude Fleet → ⚙️)</summary>
 
 <br>
 
@@ -100,9 +99,9 @@ cd extension && npm ci && npm run dev
   Focus Tab / Nudge / Close Tab need Ghostty (per-tab accessibility); every other
   action (Resume, Fork, Review, Spawn, New Session…) works on any of them.
 - **Agent primary action** — Focus Tab vs Resume in New Tab (what Enter does on a live agent).
+- **Quick replies** — comma-separated canned follow-ups for the Quick Reply action.
 - **Editor command** — `code` / `cursor` / … for *Open in Editor* (must be on `PATH`).
-- **Repos directory** — override discovery root. Blank → `~/.config/claude-fleet/repos.env`
-  (legacy `claude-mac-tweaks` path still honored) → `~/Repos`.
+- **Repos directory** — override discovery root. Blank → `~/.config/claude-fleet/repos.env` → `~/Repos`.
 
 </details>
 
@@ -110,6 +109,8 @@ cd extension && npm ci && npm run dev
 
 The extension is a thin, declarative UI over a few data sources it reads directly — no daemon,
 no polling service, nothing to keep running.
+
+<p align="center"><img src="docs/flow.svg" alt="Reads ~/.claude and gh directly, then opens a Ghostty tab" width="760"></p>
 
 <details>
 <summary><strong>Where each fact comes from</strong></summary>
@@ -128,14 +129,22 @@ no polling service, nothing to keep running.
 The local commands + hooks the extension drives are vendored in **[`helpers/`](helpers/)**
 (`claude-worktree`, `claude-undo`, `claude-restore`, and the `tab-status` / `fleet-register` /
 `checkpoint` hooks) — see [helpers/README](helpers/README.md). The extension degrades gracefully
-without them: Focus Tab falls back to raising Ghostty; Spawn / Undo report the missing command.
+without them: Focus Tab falls back to raising the terminal; Spawn / Undo report the missing command.
+
+## Focus Tab — how it works
+
+The `tab-status` hook titles each Ghostty tab `<emoji> <repo>:<branch> — <task>`. Ghostty exposes
+tabs as a native `AXTabGroup` of `AXRadioButton`s (titles = those strings), so the extension
+matches an agent to its tab by `repo:branch` and `AXPress`es it — jumping you straight there
+(even across Spaces for a fullscreen window). No match → it raises the terminal.
 
 ## Requirements
 
 macOS · a terminal — [Ghostty](https://ghostty.org) (default, and required for
 Focus Tab / Nudge / Close Tab), iTerm2, or Apple Terminal · Claude Code ·
-[`gh`](https://cli.github.com) (My PRs / My Issues) · `git` · `jq` (the `helpers/` hooks).
+[`gh`](https://cli.github.com) (My PRs / PRs to Review / My Issues) · `git` · `jq` (the `helpers/` hooks).
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). The Claude marks in `extension/assets/` are Anthropic's trademarks — see
+[assets/NOTICE](extension/assets/NOTICE.md). Not affiliated with Anthropic.
