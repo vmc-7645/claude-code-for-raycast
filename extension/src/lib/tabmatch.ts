@@ -13,10 +13,22 @@
 // Claude's title is verbatim the session aiTitle, which is also the agent title
 // the extension uses for hook-less sessions, so we match the whole title body.
 
+import { AgentState } from "./types";
+
 export interface AgentTab {
   repo: string; // basename(cwd)
   branch?: string; // git branch of cwd, when known
   task?: string; // agent title (best-effort; may not be prompt-derived)
+  state?: AgentState; // to disambiguate two agents sharing one repo:branch
+}
+
+// A Ghostty window/tab parsed from the AX enumeration.
+export interface TabCandidate {
+  kind: "T" | "W"; // real tab vs window-title fallback
+  win: number;
+  tab: number;
+  fs: boolean; // fullscreen
+  title: string;
 }
 
 function normTask(s?: string): string {
@@ -115,4 +127,54 @@ function bodyAgrees(task: string | undefined, title: string): boolean {
   if (x.length < 10 || y.length < 10) return false;
   const [short, long] = x.length <= y.length ? [x, y] : [y, x];
   return long.startsWith(short);
+}
+
+// Status emoji the tab-status hook uses per state. This is the only per-tab
+// signal that distinguishes two agents sharing one repo:branch — they almost
+// always differ in state (one working, one idle, …). (Per-tab recency isn't
+// exposed by the accessibility API, so state is the achievable tie-breaker.)
+const STATE_EMOJI: Record<AgentState, string> = {
+  working: "⚙️",
+  waiting: "🔔",
+  done: "✅",
+  idle: "💤",
+};
+
+function leadingEmojiMatches(title: string, state?: AgentState): boolean {
+  if (!state) return false;
+  return title.trimStart().startsWith(STATE_EMOJI[state]);
+}
+
+// Pick the best-matching candidate for an agent, or null. Ranking:
+//   1. highest tabMatchScore — task agreement already lifts repo:branch 3→4
+//   2. leading status-emoji matches the agent's state — breaks the tie when two
+//      tabs share repo:branch (and even task text)
+//   3. a real tab ("T") over the window-title fallback ("W")
+//   4. first seen
+export function chooseTab(
+  id: AgentTab,
+  candidates: TabCandidate[],
+): TabCandidate | null {
+  let best: TabCandidate | null = null;
+  let bestScore = 0;
+  let bestEmoji = false;
+  for (const c of candidates) {
+    const score = tabMatchScore(id, c.title);
+    if (score <= 0) continue;
+    const emoji = leadingEmojiMatches(c.title, id.state);
+    const wins =
+      !best ||
+      score > bestScore ||
+      (score === bestScore && emoji && !bestEmoji) ||
+      (score === bestScore &&
+        emoji === bestEmoji &&
+        c.kind === "T" &&
+        best.kind === "W");
+    if (wins) {
+      best = c;
+      bestScore = score;
+      bestEmoji = emoji;
+    }
+  }
+  return best;
 }

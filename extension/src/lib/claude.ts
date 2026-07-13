@@ -7,7 +7,7 @@ import { runAppleScript } from "@raycast/utils";
 import { homedir } from "os";
 import { Agent } from "./types";
 import { run } from "./exec";
-import { AgentTab, tabMatchScore } from "./tabmatch";
+import { AgentTab, TabCandidate, chooseTab } from "./tabmatch";
 import {
   openTerminalTab,
   activateTerminalApp,
@@ -156,6 +156,7 @@ export async function focusAgentTab(agent: Agent): Promise<boolean> {
     repo: agent.repo,
     branch: await branchOf(agent.cwd),
     task: agent.title,
+    state: agent.state,
   };
 
   // Enumeration can hit a flaky System Events -10000; retry a few times.
@@ -171,37 +172,27 @@ export async function focusAgentTab(agent: Agent): Promise<boolean> {
     }
   }
 
-  // Pick the highest-scoring title. On a tie, prefer a real tab ("T") over the
-  // window-title fallback ("W") so a multi-tab window presses the exact tab.
-  let best: {
-    win: number;
-    tab: number;
-    kind: string;
-    fs: boolean;
-    score: number;
-  } | null = null;
+  // Parse the enumeration into candidates; chooseTab ranks them (score, then
+  // status-emoji to disambiguate two agents on the same repo:branch, then T>W).
+  const candidates: TabCandidate[] = [];
   for (const line of raw.split("\n")) {
     if (!line.includes("|||")) continue;
     const parts = line.split("|||");
     if (parts.length < 5) continue;
-    const kind = parts[0];
     const win = parseInt(parts[1], 10);
     const tab = parseInt(parts[2], 10);
-    const fs = parts[3] === "1";
-    const title = parts.slice(4).join("|||");
     if (!Number.isFinite(win) || !Number.isFinite(tab)) continue;
-    const score = tabMatchScore(id, title);
-    if (score <= 0) continue;
-    if (
-      !best ||
-      score > best.score ||
-      (score === best.score && kind === "T" && best.kind === "W")
-    ) {
-      best = { win, tab, kind, fs, score };
-    }
+    candidates.push({
+      kind: parts[0] === "T" ? "T" : "W",
+      win,
+      tab,
+      fs: parts[3] === "1",
+      title: parts.slice(4).join("|||"),
+    });
   }
 
-  if (!best) return false; // no match → caller raises Ghostty
+  const best = chooseTab(id, candidates);
+  if (!best) return false; // no match → caller raises the terminal
   try {
     await runAppleScript(
       focusScript(best.win, best.kind === "T" ? best.tab : null, best.fs),

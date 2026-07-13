@@ -15,9 +15,18 @@
       "default": "ghostty",
       "required": false,
       "data": [
-        { "title": "Ghostty", "value": "ghostty" },
-        { "title": "iTerm2", "value": "iterm" },
-        { "title": "Apple Terminal", "value": "terminal" }
+        {
+          "title": "Ghostty",
+          "value": "ghostty"
+        },
+        {
+          "title": "iTerm2",
+          "value": "iterm"
+        },
+        {
+          "title": "Apple Terminal",
+          "value": "terminal"
+        }
       ]
     },
     {
@@ -28,8 +37,14 @@
       "default": "focus",
       "required": false,
       "data": [
-        { "title": "Focus Tab", "value": "focus" },
-        { "title": "Resume in New Tab", "value": "resume" }
+        {
+          "title": "Focus Tab",
+          "value": "focus"
+        },
+        {
+          "title": "Resume in New Tab",
+          "value": "resume"
+        }
       ]
     },
     {
@@ -154,12 +169,14 @@
     "@types/react": "^19.0.10",
     "eslint": "^8.57.0",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^4.1.10"
   },
   "scripts": {
     "build": "ray build -e dist",
     "dev": "ray develop",
     "lint": "ray lint",
-    "fix-lint": "ray lint --fix"
+    "fix-lint": "ray lint --fix",
+    "test": "vitest run"
   }
 }
