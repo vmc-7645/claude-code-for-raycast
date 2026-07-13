@@ -16,13 +16,16 @@ import {
   confirmAlert,
   Alert,
   useNavigation,
+  openExtensionPreferences,
 } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { loadAgents } from "./lib/rank";
 import { cleanupStaleFleet } from "./lib/fleet";
 import { deleteTranscript } from "./lib/history";
 import { prefs } from "./lib/prefs";
-import { Agent, AgentState } from "./lib/types";
+import { Agent } from "./lib/types";
+import { focusSupported } from "./lib/terminal";
+import { preflight, Issue } from "./lib/preflight";
 import {
   resumeAgent,
   forkAgent,
@@ -83,6 +86,7 @@ export default function Command() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDetail, setShowDetail] = useState(false);
   const [scope, setScope] = useState("all");
+  const [issues, setIssues] = useState<Issue[]>([]);
 
   function refresh() {
     try {
@@ -90,7 +94,11 @@ export default function Command() {
       setActive(r.active);
       setRecent(r.recent);
     } catch (e) {
-      showToast({ style: Toast.Style.Failure, title: "Failed to load agents", message: String(e) });
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to load agents",
+        message: String(e),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -102,24 +110,47 @@ export default function Command() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    preflight()
+      .then(setIssues)
+      .catch(() => setIssues([]));
+  }, []);
+
   async function cleanUp() {
-    const keep = new Set<string>([...active, ...recent].map((a) => a.sessionId));
+    const keep = new Set<string>(
+      [...active, ...recent].map((a) => a.sessionId),
+    );
     const n = cleanupStaleFleet(keep);
-    await showToast({ style: Toast.Style.Success, title: `Cleaned up ${n} stale fleet file(s)` });
+    await showToast({
+      style: Toast.Style.Success,
+      title: `Cleaned up ${n} stale fleet file(s)`,
+    });
   }
 
-  const repos = Array.from(new Set([...active, ...recent].map((a) => a.repo))).sort();
+  const repos = Array.from(
+    new Set([...active, ...recent].map((a) => a.repo)),
+  ).sort();
   const inScope = (a: Agent) =>
     scope === "all" ||
     (scope === "active" && a.live) ||
     (scope === "recent" && !a.live) ||
     (scope.startsWith("repo:") && a.repo === scope.slice(5));
 
-  const shownActive = active.filter((a) => a.live && (scope === "all" || scope === "active" || inScope(a)));
-  const shownRecent = recent.filter((a) => !a.live && (scope === "all" || scope === "recent" || inScope(a)));
-  const empty = !isLoading && shownActive.length === 0 && shownRecent.length === 0;
+  const shownActive = active.filter(
+    (a) => a.live && (scope === "all" || scope === "active" || inScope(a)),
+  );
+  const shownRecent = recent.filter(
+    (a) => !a.live && (scope === "all" || scope === "recent" || inScope(a)),
+  );
+  const empty =
+    !isLoading && shownActive.length === 0 && shownRecent.length === 0;
 
-  const shared = { onRefresh: refresh, showDetail, toggleDetail: () => setShowDetail((v) => !v), cleanUp };
+  const shared = {
+    onRefresh: refresh,
+    showDetail,
+    toggleDetail: () => setShowDetail((v) => !v),
+    cleanUp,
+  };
 
   return (
     <List
@@ -139,7 +170,34 @@ export default function Command() {
         </List.Dropdown>
       }
     >
-      {empty && <List.EmptyView icon="🤖" title="No Claude agents" description="Start one and it'll appear here." />}
+      {empty && (
+        <List.EmptyView
+          icon="🤖"
+          title="No Claude agents"
+          description="Start one and it'll appear here."
+        />
+      )}
+      {issues.length > 0 && (
+        <List.Section title="⚠️ Setup">
+          {issues.map((iss) => (
+            <List.Item
+              key={iss.key}
+              icon={{ source: Icon.Warning, tintColor: Color.Orange }}
+              title={iss.title}
+              subtitle={iss.detail}
+              actions={
+                <ActionPanel>
+                  <Action
+                    title="Open Extension Preferences"
+                    icon={Icon.Gear}
+                    onAction={openExtensionPreferences}
+                  />
+                </ActionPanel>
+              }
+            />
+          ))}
+        </List.Section>
+      )}
       <List.Section title={`Active (${shownActive.length})`}>
         {shownActive.map((a) => (
           <AgentItem key={a.sessionId} agent={a} {...shared} />
@@ -170,11 +228,19 @@ function NudgeForm({ agent }: { agent: Agent }) {
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Send to Agent" icon={Icon.Message} onSubmit={onSubmit} />
+          <Action.SubmitForm
+            title="Send to Agent"
+            icon={Icon.Message}
+            onSubmit={onSubmit}
+          />
         </ActionPanel>
       }
     >
-      <Form.TextArea id="text" title={`Nudge ${agent.repo}`} placeholder="follow-up to type into the agent's tab…" />
+      <Form.TextArea
+        id="text"
+        title={`Nudge ${agent.repo}`}
+        placeholder="follow-up to type into the agent's tab…"
+      />
     </Form>
   );
 }
@@ -190,6 +256,7 @@ function AgentItem(props: {
   const { push } = useNavigation();
   const mode = modeLabel(agent.mode);
   const p = prefs();
+  const canTabs = focusSupported();
 
   const ageLabel = agent.live
     ? `${agent.state} · ${timeAgo(agent.updatedAt)}`
@@ -198,7 +265,9 @@ function AgentItem(props: {
   const accessories: List.Item.Accessory[] = [];
   if (mode) accessories.push({ tag: { value: mode, color: Color.Purple } });
   if (agent.state === "waiting" && agent.stateReason) {
-    accessories.push({ tag: { value: agent.stateReason, color: Color.Orange } });
+    accessories.push({
+      tag: { value: agent.stateReason, color: Color.Orange },
+    });
   } else if (agent.state === "working" && agent.lastTool) {
     accessories.push({ text: agent.lastTool });
   } else if (agent.diff) {
@@ -226,10 +295,17 @@ function AgentItem(props: {
     if (!ok) return;
     try {
       stopAgent(agent.pid);
-      await showToast({ style: Toast.Style.Success, title: `Sent stop to ${agent.repo}` });
+      await showToast({
+        style: Toast.Style.Success,
+        title: `Sent stop to ${agent.repo}`,
+      });
       onRefresh();
     } catch (e) {
-      await showToast({ style: Toast.Style.Failure, title: "Stop failed", message: String(e) });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Stop failed",
+        message: String(e),
+      });
     }
   }
 
@@ -237,7 +313,10 @@ function AgentItem(props: {
     const ok = await confirmAlert({
       title: `Close ${agent.repo} tab?`,
       message: "Closes the agent's Ghostty tab (ends the session).",
-      primaryAction: { title: "Close Tab", style: Alert.ActionStyle.Destructive },
+      primaryAction: {
+        title: "Close Tab",
+        style: Alert.ActionStyle.Destructive,
+      },
     });
     if (!ok) return;
     await closeMainWindow();
@@ -250,7 +329,9 @@ function AgentItem(props: {
     }
   }
 
-  const markdown = agent.question ? `**Last message**\n\n${agent.question}` : "_No message captured yet._";
+  const markdown = agent.question
+    ? `**Last message**\n\n${agent.question}`
+    : "_No message captured yet._";
   const detail = (
     <List.Item.Detail
       markdown={markdown}
@@ -259,21 +340,47 @@ function AgentItem(props: {
           <List.Item.Detail.Metadata.Label title="Repo" text={agent.repo} />
           <List.Item.Detail.Metadata.Label title="State" text={agent.state} />
           {mode && <List.Item.Detail.Metadata.Label title="Mode" text={mode} />}
-          {agent.title && <List.Item.Detail.Metadata.Label title="Task" text={agent.title} />}
-          {agent.stateReason && <List.Item.Detail.Metadata.Label title="Waiting on" text={agent.stateReason} />}
-          {agent.lastTool && <List.Item.Detail.Metadata.Label title="Last tool" text={agent.lastTool} />}
-          {agent.diff && <List.Item.Detail.Metadata.Label title="Diff" text={agent.diff} />}
-          {agent.turns ? <List.Item.Detail.Metadata.Label title="Turns" text={String(agent.turns)} /> : null}
+          {agent.title && (
+            <List.Item.Detail.Metadata.Label title="Task" text={agent.title} />
+          )}
+          {agent.stateReason && (
+            <List.Item.Detail.Metadata.Label
+              title="Waiting on"
+              text={agent.stateReason}
+            />
+          )}
+          {agent.lastTool && (
+            <List.Item.Detail.Metadata.Label
+              title="Last tool"
+              text={agent.lastTool}
+            />
+          )}
+          {agent.diff && (
+            <List.Item.Detail.Metadata.Label title="Diff" text={agent.diff} />
+          )}
+          {agent.turns ? (
+            <List.Item.Detail.Metadata.Label
+              title="Turns"
+              text={String(agent.turns)}
+            />
+          ) : null}
           <List.Item.Detail.Metadata.Separator />
           <List.Item.Detail.Metadata.Label title="Path" text={agent.cwd} />
-          <List.Item.Detail.Metadata.Label title="Session" text={agent.sessionId} />
+          <List.Item.Detail.Metadata.Label
+            title="Session"
+            text={agent.sessionId}
+          />
         </List.Item.Detail.Metadata>
       }
     />
   );
 
   const focusAction = (
-    <Action title="Focus Tab" icon={Icon.Window} onAction={() => act(() => focusOrRaise(agent), `Focusing ${agent.repo}`)} />
+    <Action
+      title="Focus Tab"
+      icon={Icon.Window}
+      onAction={() => act(() => focusOrRaise(agent), `Focusing ${agent.repo}`)}
+    />
   );
   const resumeAction = (
     <Action
@@ -294,18 +401,38 @@ function AgentItem(props: {
         <ActionPanel>
           {agent.live ? (
             <>
-              {p.primaryClick === "resume" ? resumeAction : focusAction}
-              {p.primaryClick === "resume" ? focusAction : resumeAction}
-              <Action
-                title="Nudge / Send Prompt"
-                icon={Icon.Message}
-                shortcut={{ modifiers: ["cmd"], key: "n" }}
-                onAction={() => push(<NudgeForm agent={agent} />)}
-              />
-              {agent.state === "working" && (
-                <Action title="Stop Agent" icon={Icon.Stop} style={Action.Style.Destructive} onAction={doStop} />
+              {/* Focus/Nudge/Close drive an exact tab — Ghostty only. Other
+                  terminals fall back to Resume as the primary action. */}
+              {canTabs ? (
+                <>
+                  {p.primaryClick === "resume" ? resumeAction : focusAction}
+                  {p.primaryClick === "resume" ? focusAction : resumeAction}
+                  <Action
+                    title="Nudge / Send Prompt"
+                    icon={Icon.Message}
+                    shortcut={{ modifiers: ["cmd"], key: "n" }}
+                    onAction={() => push(<NudgeForm agent={agent} />)}
+                  />
+                </>
+              ) : (
+                resumeAction
               )}
-              <Action title="Close Tab" icon={Icon.XMarkCircle} style={Action.Style.Destructive} onAction={doClose} />
+              {agent.state === "working" && (
+                <Action
+                  title="Stop Agent"
+                  icon={Icon.Stop}
+                  style={Action.Style.Destructive}
+                  onAction={doStop}
+                />
+              )}
+              {canTabs && (
+                <Action
+                  title="Close Tab"
+                  icon={Icon.XMarkCircle}
+                  style={Action.Style.Destructive}
+                  onAction={doClose}
+                />
+              )}
             </>
           ) : (
             <>
@@ -313,7 +440,9 @@ function AgentItem(props: {
               <Action
                 title="Fork Session"
                 icon={Icon.Duplicate}
-                onAction={() => act(() => forkAgent(agent), `Forking ${agent.repo}`)}
+                onAction={() =>
+                  act(() => forkAgent(agent), `Forking ${agent.repo}`)
+                }
               />
               <Action
                 title="Delete Session"
@@ -323,7 +452,10 @@ function AgentItem(props: {
                   const ok = await confirmAlert({
                     title: `Delete ${agent.repo} session?`,
                     message: "Removes the transcript file (can't be undone).",
-                    primaryAction: { title: "Delete", style: Alert.ActionStyle.Destructive },
+                    primaryAction: {
+                      title: "Delete",
+                      style: Alert.ActionStyle.Destructive,
+                    },
                   });
                   if (!ok) return;
                   deleteTranscript(agent.sessionId);
@@ -341,7 +473,9 @@ function AgentItem(props: {
           <Action
             title="Undo Last Turn"
             icon={Icon.ArrowCounterClockwise}
-            onAction={() => act(() => openUndo(agent.cwd), "Opened claude-undo")}
+            onAction={() =>
+              act(() => openUndo(agent.cwd), "Opened claude-undo")
+            }
           />
           <Action.CopyToClipboard
             title="Copy Resume Command"
@@ -351,10 +485,22 @@ function AgentItem(props: {
           <Action
             title="Open in Editor"
             icon={Icon.Code}
-            onAction={() => act(() => openInEditor(agent.cwd, p.editorCommand || "code"), "Opening editor")}
+            onAction={() =>
+              act(
+                () => openInEditor(agent.cwd, p.editorCommand || "code"),
+                "Opening editor",
+              )
+            }
           />
-          <Action title="Open Folder" icon={Icon.Folder} onAction={() => open(agent.cwd)} />
-          <Action.CopyToClipboard title="Copy Session ID" content={agent.sessionId} />
+          <Action
+            title="Open Folder"
+            icon={Icon.Folder}
+            onAction={() => open(agent.cwd)}
+          />
+          <Action.CopyToClipboard
+            title="Copy Session ID"
+            content={agent.sessionId}
+          />
           <Action
             title="Refresh"
             icon={Icon.ArrowClockwise}

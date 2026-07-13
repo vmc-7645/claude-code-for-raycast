@@ -1,47 +1,27 @@
-// `→ Claude` actions: open a Ghostty tab running a command (resume / fork /
-// review / spawn / undo), raise Ghostty, and stop an agent. Mirrors the
-// AppleScript in claude-worktree/claude-restore (SPEC §8).
+// `→ Claude` actions: open a terminal tab running a command (resume / fork /
+// review / spawn / undo), raise the terminal, and stop an agent. Tab open/
+// activate route through the terminal abstraction (default Ghostty); Focus Tab /
+// Nudge / Close Tab drive an exact Ghostty tab via accessibility. SPEC §8.
 
 import { runAppleScript } from "@raycast/utils";
 import { homedir } from "os";
 import { Agent } from "./types";
 import { run } from "./exec";
 import { AgentTab, tabMatchScore } from "./tabmatch";
-
-function shq(s: string): string {
-  return "'" + s.replace(/'/g, "'\\''") + "'";
-}
-
-function asStr(s: string): string {
-  return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
-}
-
-async function openInGhosttyTab(cwd: string, command: string): Promise<void> {
-  const typed = `cd ${shq(cwd)} && ${command}`;
-  await runAppleScript(
-    [
-      'tell application "Ghostty" to activate',
-      "delay 0.2",
-      'tell application "System Events"',
-      '  keystroke "t" using {command down}',
-      "  delay 0.6",
-      `  keystroke ${asStr(typed)}`,
-      "  key code 36",
-      "end tell",
-    ].join("\n"),
-  );
-}
+import {
+  openTerminalTab,
+  activateTerminalApp,
+  focusSupported,
+  shq,
+  asStr,
+} from "./terminal";
 
 export async function resumeAgent(a: Agent): Promise<void> {
-  await openInGhosttyTab(a.cwd, `claude --resume ${a.sessionId}`);
+  await openTerminalTab(a.cwd, `claude --resume ${a.sessionId}`);
 }
 
 export async function forkAgent(a: Agent): Promise<void> {
-  await openInGhosttyTab(a.cwd, `claude --resume ${a.sessionId} --fork-session`);
-}
-
-export async function jumpToGhostty(): Promise<void> {
-  await runAppleScript('tell application "Ghostty" to activate');
+  await openTerminalTab(a.cwd, `claude --resume ${a.sessionId} --fork-session`);
 }
 
 // Focus the exact Ghostty window/tab for an agent by matching its title (which
@@ -116,7 +96,11 @@ const ENUMERATE = [
 // fullscreen window lives on its own Space, and activate/AXRaise do NOT switch
 // Spaces to it — pressing the app's Dock tile does, reliably — so we finish
 // with that only when the target is fullscreen.
-function focusScript(win: number, tab: number | null, fullscreen: boolean): string {
+function focusScript(
+  win: number,
+  tab: number | null,
+  fullscreen: boolean,
+): string {
   const lines = [
     'tell application "System Events"',
     '  tell process "Ghostty"',
@@ -136,7 +120,11 @@ function focusScript(win: number, tab: number | null, fullscreen: boolean): stri
       "    end if",
     );
   }
-  lines.push("  end tell", "end tell", 'tell application "Ghostty" to activate');
+  lines.push(
+    "  end tell",
+    "end tell",
+    'tell application "Ghostty" to activate',
+  );
   if (fullscreen) {
     lines.push(
       'tell application "System Events"',
@@ -154,14 +142,21 @@ function focusScript(win: number, tab: number | null, fullscreen: boolean): stri
 // The worktree's current branch — the strong, deterministic half of the match.
 async function branchOf(cwd: string): Promise<string> {
   try {
-    return (await run("git", ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"])).trim();
+    return (
+      await run("git", ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"])
+    ).trim();
   } catch {
     return "";
   }
 }
 
 export async function focusAgentTab(agent: Agent): Promise<boolean> {
-  const id: AgentTab = { repo: agent.repo, branch: await branchOf(agent.cwd), task: agent.title };
+  if (!focusSupported()) return false; // only Ghostty exposes per-tab titles
+  const id: AgentTab = {
+    repo: agent.repo,
+    branch: await branchOf(agent.cwd),
+    task: agent.title,
+  };
 
   // Enumeration can hit a flaky System Events -10000; retry a few times.
   let raw = "";
@@ -170,13 +165,21 @@ export async function focusAgentTab(agent: Agent): Promise<boolean> {
       raw = await runAppleScript(ENUMERATE);
       if (raw.trim()) break;
     } catch (e) {
-      console.error(`[focus] enumerate attempt ${attempt} error: ${String(e).slice(0, 120)}`);
+      console.error(
+        `[focus] enumerate attempt ${attempt} error: ${String(e).slice(0, 120)}`,
+      );
     }
   }
 
   // Pick the highest-scoring title. On a tie, prefer a real tab ("T") over the
   // window-title fallback ("W") so a multi-tab window presses the exact tab.
-  let best: { win: number; tab: number; kind: string; fs: boolean; score: number } | null = null;
+  let best: {
+    win: number;
+    tab: number;
+    kind: string;
+    fs: boolean;
+    score: number;
+  } | null = null;
   for (const line of raw.split("\n")) {
     if (!line.includes("|||")) continue;
     const parts = line.split("|||");
@@ -189,31 +192,40 @@ export async function focusAgentTab(agent: Agent): Promise<boolean> {
     if (!Number.isFinite(win) || !Number.isFinite(tab)) continue;
     const score = tabMatchScore(id, title);
     if (score <= 0) continue;
-    if (!best || score > best.score || (score === best.score && kind === "T" && best.kind === "W")) {
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && kind === "T" && best.kind === "W")
+    ) {
       best = { win, tab, kind, fs, score };
     }
   }
 
   if (!best) return false; // no match → caller raises Ghostty
   try {
-    await runAppleScript(focusScript(best.win, best.kind === "T" ? best.tab : null, best.fs));
+    await runAppleScript(
+      focusScript(best.win, best.kind === "T" ? best.tab : null, best.fs),
+    );
     return true;
   } catch {
     return false;
   }
 }
 
-// Focus the agent's exact tab; fall back to just raising Ghostty if no match.
+// Focus the agent's exact tab; fall back to just raising the terminal if no
+// match (or if the terminal isn't Ghostty).
 export async function focusOrRaise(agent: Agent): Promise<void> {
   const ok = await focusAgentTab(agent);
-  if (!ok) await jumpToGhostty();
+  if (!ok) await activateTerminalApp();
 }
 
 // Close the agent's Ghostty tab (focus it, then ⌘W).
 export async function closeAgentTab(agent: Agent): Promise<boolean> {
   const ok = await focusAgentTab(agent);
   if (!ok) return false;
-  await runAppleScript('tell application "System Events" to keystroke "w" using {command down}');
+  await runAppleScript(
+    'tell application "System Events" to keystroke "w" using {command down}',
+  );
   return true;
 }
 
@@ -222,7 +234,12 @@ export async function nudgeAgent(agent: Agent, text: string): Promise<boolean> {
   const ok = await focusAgentTab(agent);
   if (!ok) return false;
   await runAppleScript(
-    ['tell application "System Events"', `  keystroke ${asStr(text)}`, "  key code 36", "end tell"].join("\n"),
+    [
+      'tell application "System Events"',
+      `  keystroke ${asStr(text)}`,
+      "  key code 36",
+      "end tell",
+    ].join("\n"),
   );
   return true;
 }
@@ -232,35 +249,45 @@ export function resumeCommand(agent: Agent): string {
 }
 
 // Open a folder in the configured editor (e.g. `code <path>`).
-export async function openInEditor(path: string, editorCmd: string): Promise<void> {
+export async function openInEditor(
+  path: string,
+  editorCmd: string,
+): Promise<void> {
   await run(editorCmd, [path]);
 }
 
 // Start a fresh Claude session in a repo (no worktree).
 export async function newSessionInRepo(repoPath: string): Promise<void> {
-  await openInGhosttyTab(repoPath, "claude");
+  await openTerminalTab(repoPath, "claude");
 }
 
 // Open Claude's /mcp UI to (re)authenticate MCP servers.
 export async function openMcpAuth(): Promise<void> {
-  await openInGhosttyTab(homedir(), `claude ${shq("/mcp")}`);
+  await openTerminalTab(homedir(), `claude ${shq("/mcp")}`);
 }
 
 // Run `claude doctor` in a tab.
 export async function runDoctor(): Promise<void> {
-  await openInGhosttyTab(homedir(), "claude doctor");
+  await openTerminalTab(homedir(), "claude doctor");
 }
 
 // Open the most-recent session for a directory in a new tab.
 export async function continueInDir(cwd: string): Promise<void> {
-  await openInGhosttyTab(cwd, "claude --continue");
+  await openTerminalTab(cwd, "claude --continue");
 }
 
-export async function reviewPR(repoPath: string, prNumber: number): Promise<void> {
-  await openInGhosttyTab(repoPath, `claude ${shq(`/review ${prNumber}`)}`);
+export async function reviewPR(
+  repoPath: string,
+  prNumber: number,
+): Promise<void> {
+  await openTerminalTab(repoPath, `claude ${shq(`/review ${prNumber}`)}`);
 }
 
-export async function spawnAgent(repoPath: string, branch: string, task?: string): Promise<void> {
+export async function spawnAgent(
+  repoPath: string,
+  branch: string,
+  task?: string,
+): Promise<void> {
   await run("claude-worktree", [branch], {
     cwd: repoPath,
     env: task ? { CLAUDE_WT_PROMPT: task } : undefined,
@@ -270,7 +297,7 @@ export async function spawnAgent(repoPath: string, branch: string, task?: string
 // Open claude-undo in a tab — it shows its own diff + confirmation (safer than a
 // silent revert). SPEC §5.1.
 export async function openUndo(cwd: string): Promise<void> {
-  await openInGhosttyTab(cwd, "claude-undo");
+  await openTerminalTab(cwd, "claude-undo");
 }
 
 // Best-effort stop: SIGINT the claude process (Claude's session registry pid IS
@@ -280,18 +307,33 @@ export function stopAgent(pid: number): void {
 }
 
 // Resume the agent Claude linked to a PR. SPEC §5.2.1.
-export async function resumeFromPr(repoPath: string, prNumber: number): Promise<void> {
-  await openInGhosttyTab(repoPath, `claude --from-pr ${prNumber}`);
+export async function resumeFromPr(
+  repoPath: string,
+  prNumber: number,
+): Promise<void> {
+  await openTerminalTab(repoPath, `claude --from-pr ${prNumber}`);
 }
 
 // Find the worktree (if any) that already has `branch` checked out.
-async function worktreeForBranch(repoPath: string, branch: string): Promise<string | null> {
+async function worktreeForBranch(
+  repoPath: string,
+  branch: string,
+): Promise<string | null> {
   try {
-    const out = await run("git", ["-C", repoPath, "worktree", "list", "--porcelain"]);
+    const out = await run("git", [
+      "-C",
+      repoPath,
+      "worktree",
+      "list",
+      "--porcelain",
+    ]);
     let path = "";
     for (const line of out.split("\n")) {
       if (line.startsWith("worktree ")) path = line.slice("worktree ".length);
-      else if (line.startsWith("branch ") && line.slice("branch ".length).replace("refs/heads/", "") === branch)
+      else if (
+        line.startsWith("branch ") &&
+        line.slice("branch ".length).replace("refs/heads/", "") === branch
+      )
         return path;
     }
   } catch {
@@ -310,9 +352,23 @@ export async function checkoutAndWork(
   title: string,
 ): Promise<void> {
   const branch = (
-    await run("gh", ["pr", "view", String(prNumber), "-R", repo, "--json", "headRefName", "-q", ".headRefName"], {
-      cwd: repoPath,
-    })
+    await run(
+      "gh",
+      [
+        "pr",
+        "view",
+        String(prNumber),
+        "-R",
+        repo,
+        "--json",
+        "headRefName",
+        "-q",
+        ".headRefName",
+      ],
+      {
+        cwd: repoPath,
+      },
+    )
   ).trim();
   if (!branch) throw new Error("could not resolve PR branch");
   const task = `Working on PR #${prNumber}: ${title}`;
@@ -320,8 +376,11 @@ export async function checkoutAndWork(
   const existing = await worktreeForBranch(repoPath, branch);
   if (existing) {
     // Branch already checked out — open the agent in that worktree.
-    await openInGhosttyTab(existing, `claude ${shq(task)}`);
+    await openTerminalTab(existing, `claude ${shq(task)}`);
     return;
   }
-  await run("claude-worktree", [branch], { cwd: repoPath, env: { CLAUDE_WT_PROMPT: task } });
+  await run("claude-worktree", [branch], {
+    cwd: repoPath,
+    env: { CLAUDE_WT_PROMPT: task },
+  });
 }

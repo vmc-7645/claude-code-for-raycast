@@ -96,6 +96,9 @@ cd extension && npm ci && npm run dev
 
 <br>
 
+- **Terminal** — where agents open: **Ghostty** (default), iTerm2, or Apple Terminal.
+  Focus Tab / Nudge / Close Tab need Ghostty (per-tab accessibility); every other
+  action (Resume, Fork, Review, Spawn, New Session…) works on any of them.
 - **Agent primary action** — Focus Tab vs Resume in New Tab (what Enter does on a live agent).
 - **Editor command** — `code` / `cursor` / … for *Open in Editor* (must be on `PATH`).
 - **Repos directory** — override discovery root. Blank → `~/.config/claude-code-for-raycast/repos.env`
@@ -129,8 +132,9 @@ without them: Focus Tab falls back to raising Ghostty; Spawn / Undo report the m
 
 ## Requirements
 
-macOS · [Ghostty](https://ghostty.org) · [`gh`](https://cli.github.com) · `jq` · `git` ·
-Claude Code (≥ 2.1.141 for the tab-title hook).
+macOS · a terminal — [Ghostty](https://ghostty.org) (default, and required for
+Focus Tab / Nudge / Close Tab), iTerm2, or Apple Terminal · Claude Code ·
+[`gh`](https://cli.github.com) (My PRs / My Issues) · `git` · `jq` (the `helpers/` hooks).
 
 ## License
 

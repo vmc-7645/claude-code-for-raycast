@@ -4,6 +4,7 @@ export interface Prefs {
   editorCommand?: string;
   reposRoot?: string;
   primaryClick?: "focus" | "resume";
+  terminalApp?: "ghostty" | "iterm" | "terminal";
 }
 
 export function prefs(): Prefs {

@@ -17,6 +17,21 @@ export interface ClaudeSession {
 
 const SESSIONS_DIR = join(homedir(), ".claude", "sessions");
 
+// Is the process still running? Claude removes its session file on a clean exit,
+// but a crash / kill -9 leaves a stale file that would otherwise show forever as
+// a live agent (and make Stop SIGINT a possibly-recycled PID). `kill(pid, 0)`
+// signals nothing; it just probes existence. ESRCH = gone; EPERM = alive but not
+// ours (still alive). pid 0 = unknown → keep (can't verify).
+function pidAlive(pid: number): boolean {
+  if (!pid) return true;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
 export function readActiveSessions(): ClaudeSession[] {
   let files: string[];
   try {
@@ -29,11 +44,16 @@ export function readActiveSessions(): ClaudeSession[] {
   for (const f of files) {
     try {
       const j = JSON.parse(readFileSync(join(SESSIONS_DIR, f), "utf8"));
-      if (typeof j.sessionId === "string" && typeof j.cwd === "string") {
+      const pid = typeof j.pid === "number" ? j.pid : 0;
+      if (
+        typeof j.sessionId === "string" &&
+        typeof j.cwd === "string" &&
+        pidAlive(pid)
+      ) {
         out.push({
           sessionId: j.sessionId,
           cwd: j.cwd,
-          pid: typeof j.pid === "number" ? j.pid : 0,
+          pid,
           status: j.status === "busy" ? "busy" : "idle",
           name: typeof j.name === "string" ? j.name : undefined,
           updatedAt: typeof j.updatedAt === "number" ? j.updatedAt : 0,

@@ -8,6 +8,19 @@
   "license": "MIT",
   "preferences": [
     {
+      "name": "terminalApp",
+      "type": "dropdown",
+      "title": "Terminal",
+      "description": "Where agents open. Focus Tab / Nudge / Close Tab need Ghostty (per-tab accessibility); other terminals still get Resume/Fork/Review/Spawn/etc.",
+      "default": "ghostty",
+      "required": false,
+      "data": [
+        { "title": "Ghostty", "value": "ghostty" },
+        { "title": "iTerm2", "value": "iterm" },
+        { "title": "Apple Terminal", "value": "terminal" }
+      ]
+    },
+    {
       "name": "primaryClick",
       "type": "dropdown",
       "title": "Agent primary action",
