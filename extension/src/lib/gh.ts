@@ -9,6 +9,7 @@ export interface PR {
   url: string;
   state: string;
   isDraft: boolean;
+  author?: string; // login of the PR author (shown when reviewing others' PRs)
 }
 
 interface RawPR {
@@ -18,6 +19,23 @@ interface RawPR {
   state?: string;
   isDraft?: boolean;
   repository?: { name?: string; nameWithOwner?: string };
+  author?: { login?: string };
+}
+
+const PR_FIELDS = "number,title,repository,url,state,isDraft,author";
+
+// Pure JSON → PR[] mapping (exported for tests).
+export function parsePRs(json: string): PR[] {
+  const rows = JSON.parse(json) as RawPR[];
+  return rows.map((r) => ({
+    number: r.number,
+    title: r.title,
+    repo: r.repository?.nameWithOwner || r.repository?.name || "",
+    url: r.url,
+    state: r.state || "open",
+    isDraft: !!r.isDraft,
+    author: r.author?.login || undefined,
+  }));
 }
 
 // Cross-repo list of the user's open PRs (SPEC §7 — no cwd needed).
@@ -32,17 +50,26 @@ export async function searchMyPRs(): Promise<PR[]> {
     "--sort",
     "updated",
     "--json",
-    "number,title,repository,url,state,isDraft",
+    PR_FIELDS,
   ]);
-  const rows = JSON.parse(out) as RawPR[];
-  return rows.map((r) => ({
-    number: r.number,
-    title: r.title,
-    repo: r.repository?.nameWithOwner || r.repository?.name || "",
-    url: r.url,
-    state: r.state || "open",
-    isDraft: !!r.isDraft,
-  }));
+  return parsePRs(out);
+}
+
+// Open PRs awaiting YOUR review (someone requested you). Cross-repo.
+export async function searchReviewRequests(): Promise<PR[]> {
+  const out = await run("gh", [
+    "search",
+    "prs",
+    "--review-requested=@me",
+    "--state=open",
+    "--limit",
+    "50",
+    "--sort",
+    "updated",
+    "--json",
+    PR_FIELDS,
+  ]);
+  return parsePRs(out);
 }
 
 // "none" = the PR genuinely has no checks; "unknown" = we couldn't fetch them

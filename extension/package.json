@@ -88,6 +88,13 @@
       "mode": "view"
     },
     {
+      "name": "review-requests",
+      "title": "PRs to Review",
+      "subtitle": "Claude Code",
+      "description": "Open PRs awaiting your review; hand any to claude /review.",
+      "mode": "view"
+    },
+    {
       "name": "spawn",
       "title": "Spawn Agent",
       "subtitle": "Claude Code",
