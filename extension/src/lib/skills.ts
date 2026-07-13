@@ -2,7 +2,14 @@
 // "disabled" by renaming SKILL.md → SKILL.md.disabled (Claude Code then ignores
 // it).
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "fs";
 import { homedir } from "os";
 import { join } from "path";
 

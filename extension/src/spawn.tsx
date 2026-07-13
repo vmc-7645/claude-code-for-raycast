@@ -1,7 +1,16 @@
 // Spawn Agent — pick a repo, give a task (+optional branch), and launch an
 // agent in a fresh worktree. SPEC §5.3.
 
-import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWindow } from "@raycast/api";
+import {
+  Form,
+  ActionPanel,
+  Action,
+  Icon,
+  showToast,
+  Toast,
+  showHUD,
+  closeMainWindow,
+} from "@raycast/api";
 import { useState } from "react";
 import { reposConfig, resolveRepoPath } from "./lib/repos";
 import { useRepoOptions, RepoDropdown } from "./lib/repo-field";
@@ -53,13 +62,25 @@ export default function Command() {
       isLoading={loading}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Spawn Agent" icon={Icon.Rocket} onSubmit={onSubmit} />
+          <Action.SubmitForm
+            title="Spawn Agent"
+            icon={Icon.Rocket}
+            onSubmit={onSubmit}
+          />
         </ActionPanel>
       }
     >
       <RepoDropdown id="repo" options={options} defaultRepo={defaultRepo} />
-      <Form.TextField id="task" title="Task" placeholder="what should the agent do?" />
-      <Form.TextField id="branch" title="Branch" placeholder="optional — defaults to agent/<slug>" />
+      <Form.TextField
+        id="task"
+        title="Task"
+        placeholder="what should the agent do?"
+      />
+      <Form.TextField
+        id="branch"
+        title="Branch"
+        placeholder="optional — defaults to agent/<slug>"
+      />
     </Form>
   );
 }

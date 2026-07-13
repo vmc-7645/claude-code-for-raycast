@@ -42,12 +42,22 @@ export default function Command() {
   return (
     <List searchBarPlaceholder="Claude Code config…">
       <List.Section title="Edit">
-        <Row icon={Icon.Gear} title="settings.json" onAction={() => edit(configPaths.settings)} />
-        <Row icon={Icon.Lock} title="settings.local.json (permissions)" onAction={() => edit(configPaths.settingsLocal)} />
+        <Row
+          icon={Icon.Gear}
+          title="settings.json"
+          onAction={() => edit(configPaths.settings)}
+        />
+        <Row
+          icon={Icon.Lock}
+          title="settings.local.json (permissions)"
+          onAction={() => edit(configPaths.settingsLocal)}
+        />
         <Row
           icon={Icon.Document}
           title="Global CLAUDE.md"
-          onAction={() => edit(ensureFile(configPaths.globalMemory, "# Global memory\n\n"))}
+          onAction={() =>
+            edit(ensureFile(configPaths.globalMemory, "# Global memory\n\n"))
+          }
         />
       </List.Section>
       <List.Section title="Inspect">
@@ -59,8 +69,17 @@ export default function Command() {
             .join("  ")}
           onAction={() => push(<HooksView />)}
         />
-        <Row icon={Icon.Box} title="Plugins" subtitle={enabledPlugins().join(", ") || "none"} />
-        <Row icon={Icon.LightBulb} title="Default model" subtitle={currentModel()} onAction={() => push(<ModelPicker />)} />
+        <Row
+          icon={Icon.Box}
+          title="Plugins"
+          subtitle={enabledPlugins().join(", ") || "none"}
+        />
+        <Row
+          icon={Icon.LightBulb}
+          title="Default model"
+          subtitle={currentModel()}
+          onAction={() => push(<ModelPicker />)}
+        />
       </List.Section>
       <List.Section title="Tools">
         <Row
@@ -134,7 +153,11 @@ function ModelPicker() {
         </ActionPanel>
       }
     >
-      <Form.Dropdown id="model" title="Default model" defaultValue={currentModel()}>
+      <Form.Dropdown
+        id="model"
+        title="Default model"
+        defaultValue={currentModel()}
+      >
         {MODELS.map((m) => (
           <Form.Dropdown.Item key={m.value} value={m.value} title={m.title} />
         ))}

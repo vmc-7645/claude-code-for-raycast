@@ -1,7 +1,17 @@
 // My PRs — cross-repo list of your open PRs with CI status; each row → Review in
 // Claude / Check out & work / Resume PR agent. SPEC §5.2.
 
-import { List, ActionPanel, Action, Icon, Color, showToast, Toast, showHUD, closeMainWindow } from "@raycast/api";
+import {
+  List,
+  ActionPanel,
+  Action,
+  Icon,
+  Color,
+  showToast,
+  Toast,
+  showHUD,
+  closeMainWindow,
+} from "@raycast/api";
 import { useEffect, useState } from "react";
 import { searchMyPRs, prCiStatus, PR, CiStatus } from "./lib/gh";
 import { reviewPR, checkoutAndWork, resumeFromPr } from "./lib/claude";
@@ -21,11 +31,17 @@ export default function Command() {
         setIsLoading(false);
         // CI status per PR, in parallel (one gh call each).
         const entries = await Promise.all(
-          list.map(async (p) => [p.url, await prCiStatus(p.repo, p.number)] as const),
+          list.map(
+            async (p) => [p.url, await prCiStatus(p.repo, p.number)] as const,
+          ),
         );
         setCi(Object.fromEntries(entries));
       } catch (e) {
-        await showToast({ style: Toast.Style.Failure, title: "Failed to load PRs", message: String(e) });
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to load PRs",
+          message: String(e),
+        });
         setIsLoading(false);
       }
     })();
@@ -33,7 +49,9 @@ export default function Command() {
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search your open PRs…">
-      {!isLoading && prs.length === 0 && <List.EmptyView icon="🔀" title="No open PRs" />}
+      {!isLoading && prs.length === 0 && (
+        <List.EmptyView icon="🔀" title="No open PRs" />
+      )}
       {prs.map((pr) => (
         <PRItem key={pr.url} pr={pr} ci={ci[pr.url]} />
       ))}
@@ -44,11 +62,20 @@ export default function Command() {
 function ciAccessory(ci?: CiStatus): List.Item.Accessory | undefined {
   switch (ci) {
     case "pass":
-      return { icon: { source: Icon.CheckCircle, tintColor: Color.Green }, tooltip: "checks passing" };
+      return {
+        icon: { source: Icon.CheckCircle, tintColor: Color.Green },
+        tooltip: "checks passing",
+      };
     case "fail":
-      return { icon: { source: Icon.XMarkCircle, tintColor: Color.Red }, tooltip: "checks failing" };
+      return {
+        icon: { source: Icon.XMarkCircle, tintColor: Color.Red },
+        tooltip: "checks failing",
+      };
     case "pending":
-      return { icon: { source: Icon.Clock, tintColor: Color.Yellow }, tooltip: "checks running" };
+      return {
+        icon: { source: Icon.Clock, tintColor: Color.Yellow },
+        tooltip: "checks running",
+      };
     default:
       return undefined;
   }
@@ -59,7 +86,11 @@ function PRItem({ pr, ci }: { pr: PR; ci?: CiStatus }) {
 
   async function withLocal(fn: (path: string) => Promise<void>, hud: string) {
     if (!local) {
-      await showToast({ style: Toast.Style.Failure, title: "Repo not cloned locally", message: pr.repo });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Repo not cloned locally",
+        message: pr.repo,
+      });
       return;
     }
     await closeMainWindow();
@@ -74,7 +105,8 @@ function PRItem({ pr, ci }: { pr: PR; ci?: CiStatus }) {
   const accessories: List.Item.Accessory[] = [];
   const c = ciAccessory(ci);
   if (c) accessories.push(c);
-  if (pr.isDraft) accessories.push({ tag: { value: "draft", color: Color.SecondaryText } });
+  if (pr.isDraft)
+    accessories.push({ tag: { value: "draft", color: Color.SecondaryText } });
   accessories.push({ text: pr.repo });
 
   return (
@@ -88,19 +120,32 @@ function PRItem({ pr, ci }: { pr: PR; ci?: CiStatus }) {
           <Action
             title="Review in Claude"
             icon={Icon.MagnifyingGlass}
-            onAction={() => withLocal((p) => reviewPR(p, pr.number), `Reviewing ${pr.repo}#${pr.number}`)}
+            onAction={() =>
+              withLocal(
+                (p) => reviewPR(p, pr.number),
+                `Reviewing ${pr.repo}#${pr.number}`,
+              )
+            }
           />
           <Action
             title="Check Out & Work"
             icon={Icon.Hammer}
             onAction={() =>
-              withLocal((p) => checkoutAndWork(p, pr.repo, pr.number, pr.title), `Checking out ${pr.repo}#${pr.number}`)
+              withLocal(
+                (p) => checkoutAndWork(p, pr.repo, pr.number, pr.title),
+                `Checking out ${pr.repo}#${pr.number}`,
+              )
             }
           />
           <Action
             title="Resume PR Agent"
             icon={Icon.Terminal}
-            onAction={() => withLocal((p) => resumeFromPr(p, pr.number), `Resuming ${pr.repo}#${pr.number}`)}
+            onAction={() =>
+              withLocal(
+                (p) => resumeFromPr(p, pr.number),
+                `Resuming ${pr.repo}#${pr.number}`,
+              )
+            }
           />
           <Action.OpenInBrowser url={pr.url} />
           <Action.CopyToClipboard title="Copy PR URL" content={pr.url} />

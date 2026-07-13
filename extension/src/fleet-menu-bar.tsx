@@ -46,7 +46,9 @@ export default function Command() {
           <MenuBarExtra.Item
             key={a.sessionId}
             title={label(a)}
-            subtitle={a.state === "waiting" && a.stateReason ? a.stateReason : undefined}
+            subtitle={
+              a.state === "waiting" && a.stateReason ? a.stateReason : undefined
+            }
             onAction={() => focusOrRaise(a)}
           />
         ))}
@@ -66,10 +68,20 @@ export default function Command() {
       <MenuBarExtra.Section>
         <MenuBarExtra.Item
           title="Open Agents…"
-          onAction={() => launchCommand({ name: "agents", type: LaunchType.UserInitiated })}
+          onAction={() =>
+            launchCommand({ name: "agents", type: LaunchType.UserInitiated })
+          }
         />
-        <MenuBarExtra.Item title="New Agent…" onAction={() => launchCommand({ name: "spawn", type: LaunchType.UserInitiated })} />
-        <MenuBarExtra.Item title="Fleet folder" onAction={() => open(`${process.env.HOME}/.claude/fleet`)} />
+        <MenuBarExtra.Item
+          title="New Agent…"
+          onAction={() =>
+            launchCommand({ name: "spawn", type: LaunchType.UserInitiated })
+          }
+        />
+        <MenuBarExtra.Item
+          title="Fleet folder"
+          onAction={() => open(`${process.env.HOME}/.claude/fleet`)}
+        />
       </MenuBarExtra.Section>
     </MenuBarExtra>
   );

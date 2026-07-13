@@ -20,7 +20,9 @@ const FLEET_DIR = join(homedir(), ".claude", "fleet");
 
 export function readFleetEntry(sessionId: string): FleetEntry | undefined {
   try {
-    const j = JSON.parse(readFileSync(join(FLEET_DIR, `${sessionId}.json`), "utf8"));
+    const j = JSON.parse(
+      readFileSync(join(FLEET_DIR, `${sessionId}.json`), "utf8"),
+    );
     return {
       state: typeof j.state === "string" ? j.state : undefined,
       stateReason: j.state_reason || undefined,

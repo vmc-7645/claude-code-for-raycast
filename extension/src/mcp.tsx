@@ -1,6 +1,16 @@
 // MCP Servers — list configured servers + live auth status; re-authenticate.
 
-import { List, ActionPanel, Action, Icon, Color, showToast, Toast, showHUD, closeMainWindow } from "@raycast/api";
+import {
+  List,
+  ActionPanel,
+  Action,
+  Icon,
+  Color,
+  showToast,
+  Toast,
+  showHUD,
+  closeMainWindow,
+} from "@raycast/api";
 import { useEffect, useState } from "react";
 import { listMcpServers, McpServer } from "./lib/mcp";
 import { openMcpAuth } from "./lib/claude";
@@ -14,7 +24,11 @@ export default function Command() {
     try {
       setServers(await listMcpServers());
     } catch (e) {
-      await showToast({ style: Toast.Style.Failure, title: "Failed to list MCP servers", message: String(e) });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to list MCP servers",
+        message: String(e),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -68,10 +82,23 @@ function McpItem({ s, reload }: { s: McpServer; reload: () => void }) {
       accessories={[{ text: s.status }]}
       actions={
         <ActionPanel>
-          <Action title={s.needsAuth ? "Authenticate (Opens /mcp)" : "Re-authenticate (Opens /mcp)"} icon={Icon.Key} onAction={auth} />
+          <Action
+            title={
+              s.needsAuth
+                ? "Authenticate (Opens /mcp)"
+                : "Re-authenticate (Opens /mcp)"
+            }
+            icon={Icon.Key}
+            onAction={auth}
+          />
           <Action.OpenInBrowser url={s.url} />
           <Action.CopyToClipboard title="Copy URL" content={s.url} />
-          <Action title="Refresh" icon={Icon.ArrowClockwise} shortcut={{ modifiers: ["cmd"], key: "r" }} onAction={reload} />
+          <Action
+            title="Refresh"
+            icon={Icon.ArrowClockwise}
+            shortcut={{ modifiers: ["cmd"], key: "r" }}
+            onAction={reload}
+          />
         </ActionPanel>
       }
     />

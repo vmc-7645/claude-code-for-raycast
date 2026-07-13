@@ -1,7 +1,17 @@
 // New Session — pick a repo (local or remote) and start a fresh Claude session
 // there (no worktree). Remote repos are cloned on demand.
 
-import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWindow, popToRoot } from "@raycast/api";
+import {
+  Form,
+  ActionPanel,
+  Action,
+  Icon,
+  showToast,
+  Toast,
+  showHUD,
+  closeMainWindow,
+  popToRoot,
+} from "@raycast/api";
 import { useState } from "react";
 import { reposConfig, resolveRepoPath } from "./lib/repos";
 import { useRepoOptions, RepoDropdown } from "./lib/repo-field";
@@ -41,7 +51,11 @@ export default function Command() {
       isLoading={loading}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Start Session" icon={Icon.Terminal} onSubmit={onSubmit} />
+          <Action.SubmitForm
+            title="Start Session"
+            icon={Icon.Terminal}
+            onSubmit={onSubmit}
+          />
         </ActionPanel>
       }
     >

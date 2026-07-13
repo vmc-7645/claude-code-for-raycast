@@ -4,7 +4,13 @@
 // turn count. Parsed metadata is cached by file mtime so unchanged transcripts
 // aren't re-read (SPEC §6.2, §9).
 
-import { existsSync, readdirSync, readFileSync, statSync, unlinkSync } from "fs";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+} from "fs";
 import { homedir } from "os";
 import { join } from "path";
 
@@ -32,7 +38,12 @@ function assistantText(content: unknown): string {
   if (typeof content === "string") return content.trim();
   if (Array.isArray(content)) {
     return content
-      .filter((b) => b && (b as { type?: string }).type === "text" && typeof (b as { text?: string }).text === "string")
+      .filter(
+        (b) =>
+          b &&
+          (b as { type?: string }).type === "text" &&
+          typeof (b as { text?: string }).text === "string",
+      )
       .map((b) => (b as { text: string }).text)
       .join("\n")
       .trim();
@@ -76,7 +87,9 @@ function parseTranscript(path: string, sessionId: string): TranscriptMeta {
       if (row.sessionId === sessionId || !meta.title) meta.title = row.aiTitle;
     }
     if (row.type === "assistant") {
-      const msg = row.message as { content?: unknown; model?: string; usage?: Record<string, number> } | undefined;
+      const msg = row.message as
+        | { content?: unknown; model?: string; usage?: Record<string, number> }
+        | undefined;
       if (msg) {
         const t = assistantText(msg.content);
         if (t) meta.lastMessage = t.slice(0, 1200);

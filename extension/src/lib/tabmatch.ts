@@ -55,11 +55,19 @@ function boundaryAfter(title: string, i: number): boolean {
 // Does `token` occur in `title` starting at a token boundary (so it's the repo,
 // not the tail of a longer name)? With `endBounded`, the token must also end at
 // a boundary (so branch "feat/a" doesn't match inside "feat/ab").
-function includesToken(title: string, token: string, endBounded = false): boolean {
-  for (let from = 0; ; ) {
+function includesToken(
+  title: string,
+  token: string,
+  endBounded = false,
+): boolean {
+  for (let from = 0; ;) {
     const i = title.indexOf(token, from);
     if (i < 0) return false;
-    if (boundaryBefore(title, i) && (!endBounded || boundaryAfter(title, i + token.length))) return true;
+    if (
+      boundaryBefore(title, i) &&
+      (!endBounded || boundaryAfter(title, i + token.length))
+    )
+      return true;
     from = i + 1;
   }
 }
@@ -81,7 +89,8 @@ export function tabMatchScore(a: AgentTab, title: string): number {
   const repoPresent =
     includesToken(title, `${a.repo}:`) ||
     includesToken(title, `${a.repo} `) ||
-    (title.endsWith(a.repo) && boundaryBefore(title, title.length - a.repo.length));
+    (title.endsWith(a.repo) &&
+      boundaryBefore(title, title.length - a.repo.length));
   if (repoPresent && taskAgrees(a.task, title)) return 2;
 
   // Last resort: the tab is Claude's own "<glyph> <aiTitle>" title with no

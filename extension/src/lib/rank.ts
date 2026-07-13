@@ -26,7 +26,11 @@ export function loadAgents(): { active: Agent[]; recent: Agent[] } {
     let state: AgentState;
     if (s.status === "busy") {
       state = "working";
-    } else if (fleet?.state === "waiting" || fleet?.state === "done" || fleet?.state === "idle") {
+    } else if (
+      fleet?.state === "waiting" ||
+      fleet?.state === "done" ||
+      fleet?.state === "idle"
+    ) {
       state = fleet.state;
     } else {
       state = "idle";

@@ -29,7 +29,11 @@ export default function Command() {
     try {
       setWts(await listWorktrees(prefs().reposRoot));
     } catch (e) {
-      await showToast({ style: Toast.Style.Failure, title: "Failed to load worktrees", message: String(e) });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to load worktrees",
+        message: String(e),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -76,16 +80,25 @@ function WtItem({ wt, onChange }: { wt: Worktree; onChange: () => void }) {
     if (!ok) return;
     try {
       await removeWorktree(wt);
-      await showToast({ style: Toast.Style.Success, title: `Removed ${basename(wt.path)}` });
+      await showToast({
+        style: Toast.Style.Success,
+        title: `Removed ${basename(wt.path)}`,
+      });
       onChange();
     } catch (e) {
-      await showToast({ style: Toast.Style.Failure, title: "Remove failed", message: String(e) });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Remove failed",
+        message: String(e),
+      });
     }
   }
 
   const accessories: List.Item.Accessory[] = [];
-  if (wt.isMain) accessories.push({ tag: { value: "main", color: Color.SecondaryText } });
-  if (wt.merged) accessories.push({ tag: { value: "merged", color: Color.Green } });
+  if (wt.isMain)
+    accessories.push({ tag: { value: "main", color: Color.SecondaryText } });
+  if (wt.merged)
+    accessories.push({ tag: { value: "merged", color: Color.Green } });
   accessories.push({ text: wt.path.replace(process.env.HOME || "", "~") });
 
   return (
@@ -98,16 +111,35 @@ function WtItem({ wt, onChange }: { wt: Worktree; onChange: () => void }) {
           <Action
             title="Open in Claude"
             icon={Icon.Terminal}
-            onAction={() => run(() => continueInDir(wt.path), `Opening ${wt.branch || basename(wt.path)}`)}
+            onAction={() =>
+              run(
+                () => continueInDir(wt.path),
+                `Opening ${wt.branch || basename(wt.path)}`,
+              )
+            }
           />
           <Action
             title="Open in Editor"
             icon={Icon.Code}
-            onAction={() => run(() => openInEditor(wt.path, prefs().editorCommand || "code"), "Opening editor")}
+            onAction={() =>
+              run(
+                () => openInEditor(wt.path, prefs().editorCommand || "code"),
+                "Opening editor",
+              )
+            }
           />
-          <Action title="Open Folder" icon={Icon.Folder} onAction={() => open(wt.path)} />
+          <Action
+            title="Open Folder"
+            icon={Icon.Folder}
+            onAction={() => open(wt.path)}
+          />
           {!wt.isMain && (
-            <Action title="Remove Worktree" icon={Icon.Trash} style={Action.Style.Destructive} onAction={remove} />
+            <Action
+              title="Remove Worktree"
+              icon={Icon.Trash}
+              style={Action.Style.Destructive}
+              onAction={remove}
+            />
           )}
         </ActionPanel>
       }

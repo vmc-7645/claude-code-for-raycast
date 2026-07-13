@@ -54,10 +54,22 @@ interface RollupCheck {
 }
 
 // CI rollup for a single PR. One gh call per PR (fetched in parallel by the UI).
-export async function prCiStatus(repo: string, number: number): Promise<CiStatus> {
+export async function prCiStatus(
+  repo: string,
+  number: number,
+): Promise<CiStatus> {
   try {
-    const out = await run("gh", ["pr", "view", String(number), "-R", repo, "--json", "statusCheckRollup"]);
-    const rollup = ((JSON.parse(out) as { statusCheckRollup?: RollupCheck[] }).statusCheckRollup || []) as RollupCheck[];
+    const out = await run("gh", [
+      "pr",
+      "view",
+      String(number),
+      "-R",
+      repo,
+      "--json",
+      "statusCheckRollup",
+    ]);
+    const rollup = ((JSON.parse(out) as { statusCheckRollup?: RollupCheck[] })
+      .statusCheckRollup || []) as RollupCheck[];
     if (rollup.length === 0) return "none";
     let pending = false;
     for (const c of rollup) {
@@ -65,10 +77,20 @@ export async function prCiStatus(repo: string, number: number): Promise<CiStatus
       const state = (c.state || "").toUpperCase();
       const status = (c.status || "").toUpperCase();
       const failed =
-        ["FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "ERROR"].includes(concl) ||
-        ["FAILURE", "ERROR"].includes(state);
+        [
+          "FAILURE",
+          "TIMED_OUT",
+          "CANCELLED",
+          "ACTION_REQUIRED",
+          "STARTUP_FAILURE",
+          "ERROR",
+        ].includes(concl) || ["FAILURE", "ERROR"].includes(state);
       if (failed) return "fail";
-      if (["IN_PROGRESS", "QUEUED", "PENDING", "WAITING"].includes(status) || state === "PENDING") pending = true;
+      if (
+        ["IN_PROGRESS", "QUEUED", "PENDING", "WAITING"].includes(status) ||
+        state === "PENDING"
+      )
+        pending = true;
     }
     return pending ? "pending" : "pass";
   } catch {

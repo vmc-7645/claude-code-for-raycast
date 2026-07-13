@@ -1,7 +1,17 @@
 // Review PR — pick a repo (local or remote) + PR number, open Claude to review
 // it. Remote repos are cloned on demand. SPEC §5.4.
 
-import { Form, ActionPanel, Action, Icon, showToast, Toast, showHUD, closeMainWindow, popToRoot } from "@raycast/api";
+import {
+  Form,
+  ActionPanel,
+  Action,
+  Icon,
+  showToast,
+  Toast,
+  showHUD,
+  closeMainWindow,
+  popToRoot,
+} from "@raycast/api";
 import { useState } from "react";
 import { reposConfig, resolveRepoPath } from "./lib/repos";
 import { useRepoOptions, RepoDropdown } from "./lib/repo-field";
@@ -23,7 +33,10 @@ export default function Command() {
       return;
     }
     if (!n || Number.isNaN(n)) {
-      await showToast({ style: Toast.Style.Failure, title: "Enter a PR number" });
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Enter a PR number",
+      });
       return;
     }
     setLoading(true);
@@ -46,7 +59,11 @@ export default function Command() {
       isLoading={loading}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Review PR in Claude" icon={Icon.MagnifyingGlass} onSubmit={onSubmit} />
+          <Action.SubmitForm
+            title="Review PR in Claude"
+            icon={Icon.MagnifyingGlass}
+            onSubmit={onSubmit}
+          />
         </ActionPanel>
       }
     >

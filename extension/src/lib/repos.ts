@@ -48,7 +48,10 @@ const CONFIG_PATHS = [
   join(homedir(), ".config", "claude-mac-tweaks", "repos.env"),
 ];
 
-export function reposConfig(overrideRoot?: string): { root: string; defaultRepo?: string } {
+export function reposConfig(overrideRoot?: string): {
+  root: string;
+  defaultRepo?: string;
+} {
   let root = join(homedir(), "Repos");
   let defaultRepo: string | undefined;
   for (const cfg of CONFIG_PATHS) {
@@ -82,16 +85,22 @@ export function listRepos(overrideRoot?: string): Repo[] {
   for (const name of entries) {
     if (name.endsWith("-worktrees")) continue;
     const path = join(root, name);
-    if (existsSync(join(path, ".git"))) out.push({ name, path, mtime: recency(path) });
+    if (existsSync(join(path, ".git")))
+      out.push({ name, path, mtime: recency(path) });
   }
   // Most-recently-active first, capped so a huge repos dir stays manageable.
   out.sort((a, b) => b.mtime - a.mtime);
   return out.slice(0, MAX_REPOS);
 }
 
-export function repoPath(nameOrOwnerRepo: string, overrideRoot?: string): string | undefined {
+export function repoPath(
+  nameOrOwnerRepo: string,
+  overrideRoot?: string,
+): string | undefined {
   const { root } = reposConfig(overrideRoot);
-  const name = nameOrOwnerRepo.includes("/") ? nameOrOwnerRepo.split("/").pop()! : nameOrOwnerRepo;
+  const name = nameOrOwnerRepo.includes("/")
+    ? nameOrOwnerRepo.split("/").pop()!
+    : nameOrOwnerRepo;
   const p = join(root, name);
   return existsSync(join(p, ".git")) ? p : undefined;
 }
@@ -123,13 +132,20 @@ export async function listRemoteRepos(): Promise<RemoteRepo[]> {
   }
   return rows
     .filter((r) => r.full_name)
-    .map((r) => ({ nameWithOwner: r.full_name!, name: r.name || r.full_name!.split("/").pop()!, pushedAt: r.pushed_at || "" }))
+    .map((r) => ({
+      nameWithOwner: r.full_name!,
+      name: r.name || r.full_name!.split("/").pop()!,
+      pushedAt: r.pushed_at || "",
+    }))
     .sort((a, b) => b.pushedAt.localeCompare(a.pushedAt))
     .slice(0, MAX_REMOTE);
 }
 
 // Clone a remote repo into the repos root (idempotent) and return its local path.
-export async function cloneRepo(nameWithOwner: string, overrideRoot?: string): Promise<string> {
+export async function cloneRepo(
+  nameWithOwner: string,
+  overrideRoot?: string,
+): Promise<string> {
   const { root } = reposConfig(overrideRoot);
   const name = nameWithOwner.split("/").pop()!;
   const target = join(root, name);
@@ -141,7 +157,10 @@ export async function cloneRepo(nameWithOwner: string, overrideRoot?: string): P
 // Resolve a dropdown value to a local path. Bare name → existing local repo;
 // "owner/name" → a remote repo, cloned on demand. Returns undefined if a local
 // value doesn't resolve.
-export async function resolveRepoPath(value: string, overrideRoot?: string): Promise<string | undefined> {
+export async function resolveRepoPath(
+  value: string,
+  overrideRoot?: string,
+): Promise<string | undefined> {
   if (value.includes("/")) return cloneRepo(value, overrideRoot);
   return repoPath(value, overrideRoot);
 }

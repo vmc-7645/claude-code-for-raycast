@@ -16,7 +16,15 @@ export interface Worktree {
 async function mergedBranches(mainPath: string): Promise<Set<string>> {
   let def = "";
   try {
-    def = (await run("git", ["-C", mainPath, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"]))
+    def = (
+      await run("git", [
+        "-C",
+        mainPath,
+        "symbolic-ref",
+        "--short",
+        "refs/remotes/origin/HEAD",
+      ])
+    )
       .trim()
       .replace(/^origin\//, "");
   } catch {
@@ -32,8 +40,20 @@ async function mergedBranches(mainPath: string): Promise<Set<string>> {
   }
   if (!def) return new Set();
   try {
-    const out = await run("git", ["-C", mainPath, "branch", "--merged", def, "--format=%(refname:short)"]);
-    const set = new Set(out.split("\n").map((s) => s.trim().replace(/^\* /, "")).filter(Boolean));
+    const out = await run("git", [
+      "-C",
+      mainPath,
+      "branch",
+      "--merged",
+      def,
+      "--format=%(refname:short)",
+    ]);
+    const set = new Set(
+      out
+        .split("\n")
+        .map((s) => s.trim().replace(/^\* /, ""))
+        .filter(Boolean),
+    );
     set.delete(def);
     return set;
   } catch {
@@ -41,7 +61,9 @@ async function mergedBranches(mainPath: string): Promise<Set<string>> {
   }
 }
 
-export async function listWorktrees(overrideRoot?: string): Promise<Worktree[]> {
+export async function listWorktrees(
+  overrideRoot?: string,
+): Promise<Worktree[]> {
   const repos = listRepos(overrideRoot);
   const out: Worktree[] = [];
   for (const r of repos) {
@@ -57,7 +79,14 @@ export async function listWorktrees(overrideRoot?: string): Promise<Worktree[]> 
     const flush = () => {
       if (path) {
         const isMain = path === r.path;
-        out.push({ repo: r.name, path, branch, isMain, mainPath: r.path, merged: !isMain && merged.has(branch) });
+        out.push({
+          repo: r.name,
+          path,
+          branch,
+          isMain,
+          mainPath: r.path,
+          merged: !isMain && merged.has(branch),
+        });
       }
       path = "";
       branch = "";
@@ -78,5 +107,12 @@ export async function listWorktrees(overrideRoot?: string): Promise<Worktree[]> 
 }
 
 export async function removeWorktree(wt: Worktree): Promise<void> {
-  await run("git", ["-C", wt.mainPath, "worktree", "remove", wt.path, "--force"]);
+  await run("git", [
+    "-C",
+    wt.mainPath,
+    "worktree",
+    "remove",
+    wt.path,
+    "--force",
+  ]);
 }

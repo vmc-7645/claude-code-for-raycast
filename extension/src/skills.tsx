@@ -23,14 +23,24 @@ export default function Command() {
 
   return (
     <List searchBarPlaceholder="Search skills / commands…">
-      {skills.length === 0 && <List.EmptyView icon="🧩" title="No custom skills" description="Create one below." />}
+      {skills.length === 0 && (
+        <List.EmptyView
+          icon="🧩"
+          title="No custom skills"
+          description="Create one below."
+        />
+      )}
       {skills.map((s) => (
         <List.Item
           key={s.name}
           icon={s.disabled ? Icon.CircleDisabled : "🧩"}
           title={`/${s.name}`}
           subtitle={s.description}
-          accessories={s.disabled ? [{ tag: { value: "disabled", color: Color.SecondaryText } }] : []}
+          accessories={
+            s.disabled
+              ? [{ tag: { value: "disabled", color: Color.SecondaryText } }]
+              : []
+          }
           actions={
             <ActionPanel>
               <Action
@@ -50,7 +60,11 @@ export default function Command() {
                 }}
               />
               <Action.ShowInFinder path={s.dir} />
-              <Action title="New Skill…" icon={Icon.Plus} onAction={() => push(<NewSkill onDone={reload} />)} />
+              <Action
+                title="New Skill…"
+                icon={Icon.Plus}
+                onAction={() => push(<NewSkill onDone={reload} />)}
+              />
             </ActionPanel>
           }
         />
@@ -60,7 +74,11 @@ export default function Command() {
         title="New Skill…"
         actions={
           <ActionPanel>
-            <Action title="New Skill…" icon={Icon.Plus} onAction={() => push(<NewSkill onDone={reload} />)} />
+            <Action
+              title="New Skill…"
+              icon={Icon.Plus}
+              onAction={() => push(<NewSkill onDone={reload} />)}
+            />
           </ActionPanel>
         }
       />
@@ -88,11 +106,19 @@ function NewSkill({ onDone }: { onDone: () => void }) {
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Create Skill" icon={Icon.Plus} onSubmit={submit} />
+          <Action.SubmitForm
+            title="Create Skill"
+            icon={Icon.Plus}
+            onSubmit={submit}
+          />
         </ActionPanel>
       }
     >
-      <Form.TextField id="name" title="Command name" placeholder="e.g. standup (becomes /standup)" />
+      <Form.TextField
+        id="name"
+        title="Command name"
+        placeholder="e.g. standup (becomes /standup)"
+      />
     </Form>
   );
 }

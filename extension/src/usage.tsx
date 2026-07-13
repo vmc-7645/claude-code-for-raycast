@@ -11,7 +11,9 @@ export default function Command() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const metas = [...readTranscripts().values()].filter((m) => totalTokens(m) > 0);
+    const metas = [...readTranscripts().values()].filter(
+      (m) => totalTokens(m) > 0,
+    );
     metas.sort((a, b) => b.updatedAt - a.updatedAt);
     setRows(metas);
     setIsLoading(false);
@@ -25,7 +27,8 @@ export default function Command() {
   const today = rows.filter((r) => r.updatedAt >= startOfToday);
   const earlier = rows.filter((r) => r.updatedAt < startOfToday);
   const sumCost = (a: TranscriptMeta[]) => a.reduce((n, r) => n + costOf(r), 0);
-  const sumTok = (a: TranscriptMeta[]) => a.reduce((n, r) => n + totalTokens(r), 0);
+  const sumTok = (a: TranscriptMeta[]) =>
+    a.reduce((n, r) => n + totalTokens(r), 0);
 
   const Item = (r: TranscriptMeta) => (
     <List.Item
@@ -33,16 +36,26 @@ export default function Command() {
       icon="💰"
       title={basename(r.cwd) || "?"}
       subtitle={r.title}
-      accessories={[{ text: fmtCost(costOf(r)) }, { tag: fmtTokens(totalTokens(r)) }]}
+      accessories={[
+        { text: fmtCost(costOf(r)) },
+        { tag: fmtTokens(totalTokens(r)) },
+      ]}
     />
   );
 
   return (
-    <List isLoading={isLoading} searchBarPlaceholder="Cost is est. at API rates — not your subscription bill">
-      <List.Section title={`Today — ~${fmtCost(sumCost(today))} API-equiv · ${fmtTokens(sumTok(today))} tokens`}>
+    <List
+      isLoading={isLoading}
+      searchBarPlaceholder="Cost is est. at API rates — not your subscription bill"
+    >
+      <List.Section
+        title={`Today — ~${fmtCost(sumCost(today))} API-equiv · ${fmtTokens(sumTok(today))} tokens`}
+      >
         {today.map(Item)}
       </List.Section>
-      <List.Section title={`Earlier — ~${fmtCost(sumCost(earlier))} API-equiv · ${fmtTokens(sumTok(earlier))} tokens`}>
+      <List.Section
+        title={`Earlier — ~${fmtCost(sumCost(earlier))} API-equiv · ${fmtTokens(sumTok(earlier))} tokens`}
+      >
         {earlier.map(Item)}
       </List.Section>
     </List>

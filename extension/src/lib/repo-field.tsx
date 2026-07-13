@@ -48,10 +48,17 @@ export function RepoDropdown(props: {
     >
       <Form.Dropdown.Section title="Local">
         {local.map((r) => (
-          <Form.Dropdown.Item key={`l:${r.name}`} value={r.name} title={r.name} icon={Icon.HardDrive} />
+          <Form.Dropdown.Item
+            key={`l:${r.name}`}
+            value={r.name}
+            title={r.name}
+            icon={Icon.HardDrive}
+          />
         ))}
       </Form.Dropdown.Section>
-      <Form.Dropdown.Section title={loadingRemote ? "Remote (loading…)" : "Remote"}>
+      <Form.Dropdown.Section
+        title={loadingRemote ? "Remote (loading…)" : "Remote"}
+      >
         {remoteOnly.map((r) => (
           <Form.Dropdown.Item
             key={`r:${r.nameWithOwner}`}

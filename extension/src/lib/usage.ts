@@ -18,8 +18,10 @@ interface Price {
 
 function priceFor(model: string): Price {
   const m = (model || "").toLowerCase();
-  if (m.includes("opus")) return { in: 15, out: 75, cacheWrite: 18.75, cacheRead: 1.5 };
-  if (m.includes("haiku")) return { in: 0.8, out: 4, cacheWrite: 1, cacheRead: 0.08 };
+  if (m.includes("opus"))
+    return { in: 15, out: 75, cacheWrite: 18.75, cacheRead: 1.5 };
+  if (m.includes("haiku"))
+    return { in: 0.8, out: 4, cacheWrite: 1, cacheRead: 0.08 };
   // sonnet / fable / unknown → sonnet-tier
   return { in: 3, out: 15, cacheWrite: 3.75, cacheRead: 0.3 };
 }
@@ -27,13 +29,18 @@ function priceFor(model: string): Price {
 export function costOf(u: Usage): number {
   const p = priceFor(u.model);
   return (
-    (u.inputTokens * p.in + u.outputTokens * p.out + u.cacheReadTokens * p.cacheRead + u.cacheWriteTokens * p.cacheWrite) /
+    (u.inputTokens * p.in +
+      u.outputTokens * p.out +
+      u.cacheReadTokens * p.cacheRead +
+      u.cacheWriteTokens * p.cacheWrite) /
     1e6
   );
 }
 
 export function totalTokens(u: Usage): number {
-  return u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheWriteTokens;
+  return (
+    u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheWriteTokens
+  );
 }
 
 export function fmtTokens(n: number): string {
