@@ -40,7 +40,11 @@ export default function Command() {
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search your open issues…">
       {!isLoading && issues.length === 0 && (
-        <List.EmptyView icon="🐛" title="No open issues" />
+        <List.EmptyView
+          icon="🐛"
+          title="No open issues"
+          description="Issues you've opened across your repos show up here."
+        />
       )}
       {issues.map((i) => (
         <IssueItem key={i.url} issue={i} />

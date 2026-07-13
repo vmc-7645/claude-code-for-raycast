@@ -50,7 +50,11 @@ export default function Command() {
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search your open PRs…">
       {!isLoading && prs.length === 0 && (
-        <List.EmptyView icon="🔀" title="No open PRs" />
+        <List.EmptyView
+          icon="🔀"
+          title="No open PRs"
+          description="Your open pull requests across repos show up here."
+        />
       )}
       {prs.map((pr) => (
         <PRItem key={pr.url} pr={pr} ci={ci[pr.url]} />

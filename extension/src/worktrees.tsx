@@ -47,6 +47,13 @@ export default function Command() {
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Search worktrees…">
+      {!isLoading && wts.length === 0 && (
+        <List.EmptyView
+          icon="🌳"
+          title="No worktrees"
+          description="Spawn an agent or Check Out & Work a PR to create one."
+        />
+      )}
       {repos.map((repo) => (
         <List.Section key={repo} title={repo}>
           {wts

@@ -48,6 +48,13 @@ export default function Command() {
       isLoading={isLoading}
       searchBarPlaceholder="Cost is est. at API rates — not your subscription bill"
     >
+      {!isLoading && rows.length === 0 && (
+        <List.EmptyView
+          icon="💰"
+          title="No usage yet"
+          description="Sessions with token usage will show estimated cost here."
+        />
+      )}
       <List.Section
         title={`Today — ~${fmtCost(sumCost(today))} API-equiv · ${fmtTokens(sumTok(today))} tokens`}
       >

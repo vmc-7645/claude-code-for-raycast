@@ -3,6 +3,7 @@
 <img src="docs/hero.svg" alt="Claude Fleet" width="760">
 
 <p>
+  <a href="https://github.com/vmc-7645/claude-fleet/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vmc-7645/claude-fleet/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="License MIT"        src="https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square" />
   <img alt="Platform macOS"     src="https://img.shields.io/badge/platform-macOS-8b8b8b?style=flat-square&logo=apple&logoColor=white" />
   <img alt="Raycast extension"  src="https://img.shields.io/badge/Raycast-extension-FF6363?style=flat-square&logo=raycast&logoColor=white" />
