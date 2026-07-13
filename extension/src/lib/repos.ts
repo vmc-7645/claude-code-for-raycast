@@ -1,8 +1,7 @@
-// Discover local repos, reusing the config at
-// ~/.config/claude-code-for-raycast/repos.env (REPO_ROOT + DEFAULT_REPO). The
-// legacy ~/.config/claude-mac-tweaks/repos.env path is still read for
-// back-compat. An optional override (from the extension preference) wins over
-// the config. SPEC §7.
+// Discover local repos, reusing the config at ~/.config/claude-fleet/repos.env
+// (REPO_ROOT + DEFAULT_REPO). Legacy paths (claude-code-for-raycast,
+// claude-mac-tweaks) are still read for back-compat. An optional override (from
+// the extension preference) wins over the config. SPEC §7.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { homedir } from "os";
@@ -41,9 +40,10 @@ function expand(p: string): string {
   return p.replace(/^~(?=$|\/)/, homedir());
 }
 
-// Preferred config path first; the legacy claude-mac-tweaks path is read only
-// if the new one is absent (back-compat). First file that exists wins.
+// Preferred config path first; legacy paths are read only if it's absent
+// (back-compat). First file that exists wins.
 const CONFIG_PATHS = [
+  join(homedir(), ".config", "claude-fleet", "repos.env"),
   join(homedir(), ".config", "claude-code-for-raycast", "repos.env"),
   join(homedir(), ".config", "claude-mac-tweaks", "repos.env"),
 ];

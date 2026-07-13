@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="extension/assets/icon.png" width="104" alt="Claude Code for Raycast" />
+<img src="extension/assets/icon.png" width="104" alt="Claude Fleet" />
 
-# Claude Code for Raycast
+# Claude Fleet
 
 **Your Claude Code agents, PRs, and worktrees — one keystroke away.**
 
@@ -101,7 +101,7 @@ cd extension && npm ci && npm run dev
   action (Resume, Fork, Review, Spawn, New Session…) works on any of them.
 - **Agent primary action** — Focus Tab vs Resume in New Tab (what Enter does on a live agent).
 - **Editor command** — `code` / `cursor` / … for *Open in Editor* (must be on `PATH`).
-- **Repos directory** — override discovery root. Blank → `~/.config/claude-code-for-raycast/repos.env`
+- **Repos directory** — override discovery root. Blank → `~/.config/claude-fleet/repos.env`
   (legacy `claude-mac-tweaks` path still honored) → `~/Repos`.
 
 </details>

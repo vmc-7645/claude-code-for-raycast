@@ -1,4 +1,4 @@
-# Claude Code for Raycast — SPEC
+# Claude Fleet — SPEC
 
 **Status:** BUILT — M1–M5 largely shipped and in daily use (see the README for the
 live command list). This doc is the design of record; a few items remain deferred
@@ -293,7 +293,7 @@ extension/
 ```
 
 ## 15. Repo & collector location
-New private repo **`claude-code-for-raycast`**: `SPEC.md` + `extension/`. The
+New repo **`claude-fleet`**: `SPEC.md` + `extension/`. The
 enriched `fleet-register.sh` and the shared `claude-open-tab` helper live in
 **`claude-mac-tweaks`** (single source; also power `fleet-restore`/`worktree-launcher`);
 this repo consumes them.

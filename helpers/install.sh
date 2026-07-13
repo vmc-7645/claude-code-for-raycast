@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Install the shell helpers that Claude Code for Raycast drives:
+# Install the shell helpers that Claude Fleet drives:
 #
 #   PATH commands (-> ~/.local/bin)
 #     claude-worktree   worktree + new Ghostty tab   (Spawn / Check Out & Work)

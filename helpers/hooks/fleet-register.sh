@@ -2,7 +2,7 @@
 #
 # Maintain a DURABLE registry of live Claude agents under ~/.claude/fleet/.
 # Powers `claude-restore` (reopen after a reboot) AND enriches the
-# claude-code-for-raycast "Agents" view (finer state + task + diff than Claude's
+# Claude Fleet "Agents" view (finer state + task + diff than Claude's
 # own busy/idle registry).
 #
 #   fleet-register.sh touch <state> [reason]   -> upsert (state = working|waiting|done|idle)

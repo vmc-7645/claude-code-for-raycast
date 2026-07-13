@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "claude-code-for-raycast",
-  "title": "Claude Code",
+  "title": "Claude Fleet",
   "description": "See and resume your Claude Code agents, and review PRs — from Raycast.",
   "icon": "icon.png",
   "author": "vmc-7645",
@@ -76,91 +76,91 @@
     {
       "name": "agents",
       "title": "Agents",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "See active and recent Claude agents; resume, fork, or jump to them.",
       "mode": "view"
     },
     {
       "name": "my-prs",
       "title": "My PRs",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Your open PRs across repos; review any of them in Claude.",
       "mode": "view"
     },
     {
       "name": "review-requests",
       "title": "PRs to Review",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Open PRs awaiting your review; hand any to claude /review.",
       "mode": "view"
     },
     {
       "name": "spawn",
       "title": "Spawn Agent",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Spawn a Claude agent in a fresh worktree from a task.",
       "mode": "view"
     },
     {
       "name": "review-pr",
       "title": "Review PR",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Open Claude to review a PR in a chosen repo.",
       "mode": "view"
     },
     {
       "name": "my-issues",
       "title": "My Issues",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Your open issues across repos; start an agent on one.",
       "mode": "view"
     },
     {
       "name": "worktrees",
       "title": "Worktrees",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "List git worktrees across your repos; open, resume, or remove.",
       "mode": "view"
     },
     {
       "name": "mcp",
       "title": "MCP Servers",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "List MCP servers + auth status; re-authenticate.",
       "mode": "view"
     },
     {
       "name": "skills",
       "title": "Skills",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Manage your custom slash-command skills.",
       "mode": "view"
     },
     {
       "name": "usage",
       "title": "Usage",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Estimated tokens & cost per session.",
       "mode": "view"
     },
     {
       "name": "claude-config",
       "title": "Claude Code Config",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Edit settings/CLAUDE.md, view hooks/plugins, set model, doctor, version.",
       "mode": "view"
     },
     {
       "name": "new-session",
       "title": "New Session",
-      "subtitle": "Claude Code",
+      "subtitle": "Claude Fleet",
       "description": "Start a fresh Claude session in a repo (no worktree).",
       "mode": "view"
     },
     {
       "name": "fleet-menu-bar",
-      "title": "Claude Code Fleet",
-      "subtitle": "Claude Code",
+      "title": "Fleet",
+      "subtitle": "Claude Fleet",
       "description": "Menu-bar indicator of Claude agents needing you.",
       "mode": "menu-bar",
       "interval": "1m"
