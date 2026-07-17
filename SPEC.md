@@ -46,6 +46,7 @@ can't stream a tab — Detail shows the last state, not a live feed).
 | **Reopen Fleet** | no-view | `claude-restore` after reboot/crash | v1 |
 | **My Issues** | view (List) | Issues (created/triage) → start an agent | v1 |
 | **Worktrees** | view (List) | Existing worktrees → open / resume / remove | Later |
+| **Contexts** | view (List) | Search past sessions by content, scoped by branch/repo | Later |
 
 ## 5. Commands in detail
 
@@ -122,6 +123,31 @@ issue title/body).
 List worktrees under `<repo>-worktrees/`. Actions: open · resume the worktree's
 session · **remove** (merged / gone-branch cleanup).
 
+### 5.9 Contexts (Later) — search your history
+**Agents** answers *what's running*; **Contexts** answers *where did I do that?*
+Search every past session by **what was said in it**, scoped by the branch it
+happened on. Rows carry the branch the session ended on, `+N` when it touched
+more, 🍂 when that branch is merged, and ⚠️ when its directory is gone.
+Actions: Resume · Fork · Focus Tab (live) · open in editor/folder · Delete.
+
+- **Why branch, not repo.** The Agents scope dropdown is repo-only, which
+  collapses when one repo dominates: locally **211 of 238 sessions are one repo**
+  (59 distinct branches). Branch is the axis that actually discriminates.
+- **Query** = free text + `branch:` / `repo:` / `is:live` / `is:idle` / `state:`.
+  Keys are case-insensitive; a bare `key:` mid-type is text, not a filter.
+  Bare words are **ANDed** (each must appear; best hit is one message holding
+  all of them, scattered-across-the-session ranks lower) — `"quoted"` asks for a
+  literal phrase, and quoting is also how a value carries a space
+  (`repo:"My Project"`). The Scope dropdown **injects the same (quoted) tokens
+  into the same parser**, so there is one filter path.
+- **Delete deletes by path, never by session id** — ids are not unique across
+  project dirs (§6.5), and the operation is irreversible.
+- **`filtering={false}`** — the only list that owns its search (§6.5), since
+  Raycast's built-in filtering only sees title/subtitle. The scan is in-memory
+  over the prebuilt index (~5ms/238), so it's synchronous and **unthrottled**.
+- **Two-phase** (§5.2 idiom): index first, then `git` for the merged 🍂 tag. The
+  list is fully usable if git / the repos root is unavailable.
+
 ## 6. Data sources & contracts
 
 ### 6.1 ACTIVE agents — Claude's own session registry (PRIMARY)
@@ -157,6 +183,13 @@ so it is **deferred off the critical path**. Absent → subtitle degrades to
 `~/.claude/projects/<encoded-cwd>/<session_id>.jsonl`, one file per session.
 - **session id** = filename; **cwd** read from *inside* the transcript (never
   reverse the dir name — dashes are ambiguous, e.g. `myrepo-worktrees`).
+- **A session id does NOT identify a transcript.** The same id can appear under
+  two project dirs (verified locally: a 1.3MB transcript and a 119-byte stub
+  share one). `readTranscripts` keys by id, so the **last** dir read wins the
+  row; anything resolving an id by scanning would take the **first** — different
+  files, deterministically. So `TranscriptMeta.path` / `Agent.transcriptPath`
+  carry the file the row was built from, and **delete takes a path, never an id**
+  (`deleteTranscriptAt`). There is deliberately no id-based lookup to reach for.
 - **title** = the last `ai-title` entry's **`aiTitle`** field in the transcript (a
   Claude-generated title — verified present; filter by matching `sessionId` when a
   transcript has several), else the first user message. **last active** = mtime;
@@ -178,6 +211,40 @@ so it is **deferred off the critical path**. Absent → subtitle degrades to
 Cross-repo reads via `gh search prs/issues --author=@me`; per-repo detail via
 `gh pr list/status/checks --repo`, `gh pr checkout`. gh auth is via keychain/config
 (independent of PATH). Show loading state; cache short-lived results.
+
+### 6.5 Context index — SEARCHABLE history (§5.9)
+Same transcripts as §6.2, read on a **separate path** into
+`~/.cache/claude-fleet/contexts.json` (schema-versioned, `0600`, temp+rename).
+Keyed **path → mtime**: only changed transcripts re-parse; entries whose file is
+gone are dropped. Locally: **0.6s cold / 13ms warm / 4.1MB over 238 sessions**.
+
+- **Branch** = the transcript's own **`gitBranch`** field — no `git` call, and it
+  stays right for branches that no longer exist. Present on 237/238 sessions.
+  **Multi-valued**: a record keeps *every* branch it touched (85 of 237 span more
+  than one) and `branch:` matches **any** of them; the last one is what's shown.
+  Filtering on the final branch alone would hide a third of history.
+- **Root cwd = the FIRST `cwd` row, never the last.** `cwd` is re-recorded per row
+  and tracks the *shell's* directory, so a `cd` in a Bash call rewrites it
+  mid-session (33 of 237 drift; 4 end somewhere that no longer exists). This is
+  the same rule as §6.2, and it's what Resume depends on.
+- **Text** = `user`/`assistant` text blocks only, capped per message and per
+  session. Transcripts are ~**4.5% human-readable text** (7.9MB of 177MB); the
+  rest is tool results and file dumps, so the cap bounds the index cheaply.
+- **Ids don't identify transcripts (§6.2)** — a record carries its own `path`
+  (the cache key already knew it), delete uses that, and rows key off it too.
+- **Liveness is never indexed** — history is not live. `is:live` / `state:` come
+  from §6.1 at render time, merged onto the record by `sessionId`, and narrowed
+  through the shared `liveState()` allowlist so the hook's raw string can't
+  become a bogus `AgentState` (as §6.1a).
+- **Why not extend `TranscriptMeta` (§6.2)?** The menu bar reaches
+  `readTranscripts()` every 60s via `loadAgents()`; hanging ~8MB of message text
+  off that shape re-introduces the worker OOM fixed in `6ae821e`. Search pays its
+  own streaming pass (`eachLine`) and keeps text out of the menu bar's path.
+  This is the §9 "never full-parse for the list" rule honored in spirit: the
+  *list* path is untouched — search is a different store with a different budget.
+- Subagent transcripts (`<session>/subagents/*.jsonl`) are a session's children,
+  not sessions; only the top level is enumerated (as §6.2). Searching them is
+  future work — they'd map to their parent `sessionId`.
 
 ## 7. Repo resolution & picker
 The extension has **no cwd**, so every repo-scoped command (Review PR, Spawn, My
@@ -340,6 +407,10 @@ this repo consumes them.
 - [x] **M5** (most) — **My Issues**; **Worktrees** (open/resume/remove, **merged
   🍂 flag**); **Preferences** (primary-click, editor, repos root); clean-up-stale GC;
   scope filter. *(Deferred: dynamic Review-PR repo dropdown — it's static in the manifest.)*
+
+- [x] **M6** — **Contexts** (§5.9): mtime-incremental content index over
+  transcripts (§6.5) on its own read path; `branch:`/`repo:`/`is:`/`state:`
+  query + branch scope dropdown; branch-set, merged 🍂 and gone ⚠️ states.
 
 ### Not implemented / notes
 - The shared `claude-open-tab` helper wasn't extracted — the extension opens tabs

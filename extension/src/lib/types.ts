@@ -5,8 +5,28 @@
 
 export type AgentState = "working" | "waiting" | "done" | "idle";
 
+// Claude's registry says busy/not; when it isn't busy, the fleet hook (if
+// present) says which kind of idle. The hook's `state` is an arbitrary string
+// off disk, so it's allowlisted rather than trusted — an unrecognized value
+// means "idle", never a bogus AgentState. Shared so every surface reads a
+// session's state the same way (SPEC §6.1a).
+export function liveState(busy: boolean, fleetState?: string): AgentState {
+  if (busy) return "working";
+  if (
+    fleetState === "waiting" ||
+    fleetState === "done" ||
+    fleetState === "idle"
+  )
+    return fleetState;
+  return "idle";
+}
+
 export interface Agent {
   sessionId: string;
+  // The transcript backing this agent, when it has one. Carried so Delete acts
+  // on the exact file the row was built from — a sessionId can't identify a
+  // transcript (see history.ts deleteTranscriptAt).
+  transcriptPath?: string;
   cwd: string;
   repo: string;
   title: string; // fleet task > aiTitle > derived name

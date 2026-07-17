@@ -6,7 +6,6 @@
 
 import {
   closeSync,
-  existsSync,
   openSync,
   readSync,
   readdirSync,
@@ -19,6 +18,12 @@ import { StringDecoder } from "string_decoder";
 
 export interface TranscriptMeta {
   sessionId: string;
+  // The transcript this was read from. A sessionId does NOT identify a file —
+  // the same id can exist under two project dirs — so anything that acts on a
+  // transcript (delete) must use this, not re-resolve the id. One string per
+  // session (~24KB over 238) is a fine cost on the menu bar's path; message
+  // text would not be (§9).
+  path: string;
   cwd: string;
   title: string;
   updatedAt: number; // mtime ms
@@ -54,8 +59,9 @@ function assistantText(content: unknown): string {
   return "";
 }
 
-const EMPTY = (sessionId: string): TranscriptMeta => ({
+const EMPTY = (sessionId: string, path: string): TranscriptMeta => ({
   sessionId,
+  path,
   cwd: "",
   title: "",
   updatedAt: 0,
@@ -85,7 +91,7 @@ function isUserTurn(message: unknown): boolean {
 // Transcripts reach tens of MB; readFileSync + split("\n") materializes the
 // whole file (plus a line array) at once, which overflows the menu-bar worker's
 // heap once the Raycast runtime's own baseline is loaded. SPEC §9.
-function eachLine(path: string, onLine: (line: string) => void): void {
+export function eachLine(path: string, onLine: (line: string) => void): void {
   const CHUNK = 1 << 18; // 256 KB
   let fd: number;
   try {
@@ -121,7 +127,7 @@ function eachLine(path: string, onLine: (line: string) => void): void {
 }
 
 function parseTranscript(path: string, sessionId: string): TranscriptMeta {
-  const meta = EMPTY(sessionId);
+  const meta = EMPTY(sessionId, path);
   eachLine(path, (line) => {
     if (!line) return;
     let row: Record<string, unknown>;
@@ -156,26 +162,23 @@ function parseTranscript(path: string, sessionId: string): TranscriptMeta {
   return meta;
 }
 
-export function findTranscriptPath(sessionId: string): string | null {
-  let dirs: string[];
+/**
+ * Delete a transcript by its exact path (TranscriptMeta.path / Agent.transcriptPath).
+ *
+ * Deliberately path-based, and there is no id-based counterpart: session ids
+ * are NOT unique across project dirs (verified locally — a 1.3MB transcript and
+ * a 119-byte one share an id). The old findTranscriptPath/deleteTranscript pair
+ * resolved an id by taking the FIRST readdir match, while readTranscripts keys
+ * its map by id so the LAST one wins — so for a colliding id they picked
+ * different files by construction, and Delete unlinked a transcript the row was
+ * not about. Unrecoverable, so it takes the path the row was actually built
+ * from or nothing.
+ */
+export function deleteTranscriptAt(path: string): boolean {
+  if (!path) return false;
   try {
-    dirs = readdirSync(PROJECTS_DIR);
-  } catch {
-    return null;
-  }
-  for (const d of dirs) {
-    const p = join(PROJECTS_DIR, d, `${sessionId}.jsonl`);
-    if (existsSync(p)) return p;
-  }
-  return null;
-}
-
-export function deleteTranscript(sessionId: string): boolean {
-  const p = findTranscriptPath(sessionId);
-  if (!p) return false;
-  try {
-    unlinkSync(p);
-    cache.delete(p);
+    unlinkSync(path);
+    cache.delete(path);
     return true;
   } catch {
     return false;
