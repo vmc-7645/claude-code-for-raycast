@@ -91,6 +91,14 @@
       "icon": "cmd/next-agent.svg"
     },
     {
+      "name": "contexts",
+      "title": "Contexts",
+      "subtitle": "Claude Fleet",
+      "description": "Search every past Claude session by what was said; scope by branch or repo.",
+      "mode": "view",
+      "icon": "cmd/contexts.svg"
+    },
+    {
       "name": "my-prs",
       "title": "My PRs",
       "subtitle": "Claude Fleet",

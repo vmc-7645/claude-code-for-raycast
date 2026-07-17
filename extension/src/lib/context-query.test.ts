@@ -58,7 +58,10 @@ describe("matchContext", () => {
   it("matches a branch the session touched but did not end on", () => {
     // 84 of 237 real sessions span >1 branch; filtering on the final branch
     // alone would hide them.
-    const r = rec({ branches: ["main", "feat/wrist-ik"], branch: "feat/wrist-ik" });
+    const r = rec({
+      branches: ["main", "feat/wrist-ik"],
+      branch: "feat/wrist-ik",
+    });
     expect(matchContext(parseQuery("branch:main"), r)).not.toBeNull();
   });
 
@@ -68,7 +71,10 @@ describe("matchContext", () => {
   });
 
   it("excludes a row when a filter misses even if the text hits", () => {
-    const r = rec({ repo: "droyd2", messages: [{ role: "u", text: "retry backoff" }] });
+    const r = rec({
+      repo: "droyd2",
+      messages: [{ role: "u", text: "retry backoff" }],
+    });
     expect(matchContext(parseQuery("repo:other retry"), r)).toBeNull();
   });
 
@@ -100,14 +106,20 @@ describe("matchContext", () => {
   });
 
   it("carries a snippet for a message hit and none for a title hit", () => {
-    const msg = rec({ messages: [{ role: "u", text: "please add retry backoff here" }] });
+    const msg = rec({
+      messages: [{ role: "u", text: "please add retry backoff here" }],
+    });
     expect(matchContext(parseQuery("retry"), msg)!.snippet).toContain("retry");
     expect(matchContext(parseQuery("untitled"), rec())!.snippet).toBe("");
   });
 
   it("filters on live state", () => {
-    expect(matchContext(parseQuery("is:live"), rec({ live: true }))).not.toBeNull();
-    expect(matchContext(parseQuery("is:live"), rec({ live: false }))).toBeNull();
+    expect(
+      matchContext(parseQuery("is:live"), rec({ live: true })),
+    ).not.toBeNull();
+    expect(
+      matchContext(parseQuery("is:live"), rec({ live: false })),
+    ).toBeNull();
   });
 });
 
@@ -120,7 +132,9 @@ describe("snippetAround", () => {
   });
 
   it("collapses whitespace so a snippet stays on one line", () => {
-    expect(snippetAround("add\n\n  retry   now", "retry")).toBe("add retry now");
+    expect(snippetAround("add\n\n  retry   now", "retry")).toBe(
+      "add retry now",
+    );
   });
 
   it("returns empty when the needle is absent", () => {
@@ -132,8 +146,13 @@ describe("searchContexts", () => {
   it("orders by score then recency", () => {
     const old = rec({ sessionId: "old", title: "retry", updatedAt: 1 });
     const fresh = rec({ sessionId: "fresh", title: "retry", updatedAt: 9 });
-    const weak = rec({ sessionId: "weak", messages: [{ role: "a", text: "retry" }] });
-    const got = searchContexts("retry", [old, weak, fresh]).map((m) => m.rec.sessionId);
+    const weak = rec({
+      sessionId: "weak",
+      messages: [{ role: "a", text: "retry" }],
+    });
+    const got = searchContexts("retry", [old, weak, fresh]).map(
+      (m) => m.rec.sessionId,
+    );
     expect(got).toEqual(["fresh", "old", "weak"]);
   });
 

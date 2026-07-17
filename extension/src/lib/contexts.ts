@@ -96,7 +96,11 @@ function isUserTurn(content: unknown): boolean {
   return false;
 }
 
-function parse(path: string, sessionId: string, mtimeMs: number): ContextRecord {
+function parse(
+  path: string,
+  sessionId: string,
+  mtimeMs: number,
+): ContextRecord {
   const rec: ContextRecord = {
     sessionId,
     root: "",
@@ -155,8 +159,7 @@ function parse(path: string, sessionId: string, mtimeMs: number): ContextRecord 
 
     if (row.type === "assistant") {
       const msg = row.message as
-        | { content?: unknown; model?: string }
-        | undefined;
+        { content?: unknown; model?: string } | undefined;
       if (!msg) return;
       if (typeof msg.model === "string") rec.model = msg.model;
       const t = textOf(msg.content);

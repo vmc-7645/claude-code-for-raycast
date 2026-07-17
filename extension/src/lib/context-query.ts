@@ -98,7 +98,12 @@ export function matchContext(q: Query, r: ContextRecord): Match | null {
     if (at === -1) continue;
     const score = m.role === "u" ? 60 : 40;
     if (!best || score > best.score) {
-      best = { rec: r, score, snippet: snippetAround(m.text, q.text), where: "message" };
+      best = {
+        rec: r,
+        score,
+        snippet: snippetAround(m.text, q.text),
+        where: "message",
+      };
       if (score === 60) break; // can't beat a user-message hit
     }
   }
