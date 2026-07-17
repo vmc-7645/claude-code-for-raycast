@@ -22,7 +22,7 @@ import {
 import { useEffect, useState } from "react";
 import { loadAgents } from "./lib/rank";
 import { cleanupStaleFleet } from "./lib/fleet";
-import { deleteTranscript } from "./lib/history";
+import { deleteTranscriptAt } from "./lib/history";
 import { prefs } from "./lib/prefs";
 import { Agent } from "./lib/types";
 import { focusSupported } from "./lib/terminal";
@@ -501,7 +501,13 @@ function AgentItem(props: {
                     },
                   });
                   if (!ok) return;
-                  deleteTranscript(agent.sessionId);
+                  if (!deleteTranscriptAt(agent.transcriptPath || "")) {
+                    await showToast({
+                      style: Toast.Style.Failure,
+                      title: "Couldn't delete session",
+                      message: "Its transcript is already gone or unreadable.",
+                    });
+                  }
                   onRefresh();
                 }}
               />

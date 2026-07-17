@@ -20,7 +20,7 @@ import {
 } from "fs";
 import { homedir } from "os";
 import { basename, dirname, join } from "path";
-import { eachLine } from "./history";
+import { deleteTranscriptAt, eachLine } from "./history";
 
 export interface ContextMessage {
   role: "u" | "a";
@@ -308,22 +308,9 @@ export function buildIndex(): ContextRecord[] {
   return out;
 }
 
-/**
- * Delete a context's transcript, by its own path.
- *
- * NOT history.ts's deleteTranscript(sessionId), which resolves an id by
- * scanning project dirs and taking the first match — ids are not unique across
- * those dirs, so that can unlink a different session's file. Irreversible, so
- * it deletes exactly the file this record was built from or nothing.
- */
+/** Delete a context's transcript — the exact file this record was built from. */
 export function deleteContext(rec: ContextRecord): boolean {
-  if (!rec.path) return false;
-  try {
-    unlinkSync(rec.path);
-    return true;
-  } catch {
-    return false;
-  }
+  return deleteTranscriptAt(rec.path);
 }
 
 /** Drop the cache so the next buildIndex() re-reads every transcript. */
