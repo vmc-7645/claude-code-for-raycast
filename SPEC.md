@@ -183,6 +183,13 @@ so it is **deferred off the critical path**. Absent → subtitle degrades to
 `~/.claude/projects/<encoded-cwd>/<session_id>.jsonl`, one file per session.
 - **session id** = filename; **cwd** read from *inside* the transcript (never
   reverse the dir name — dashes are ambiguous, e.g. `myrepo-worktrees`).
+- **A session id does NOT identify a transcript.** The same id can appear under
+  two project dirs (verified locally: a 1.3MB transcript and a 119-byte stub
+  share one). `readTranscripts` keys by id, so the **last** dir read wins the
+  row; anything resolving an id by scanning would take the **first** — different
+  files, deterministically. So `TranscriptMeta.path` / `Agent.transcriptPath`
+  carry the file the row was built from, and **delete takes a path, never an id**
+  (`deleteTranscriptAt`). There is deliberately no id-based lookup to reach for.
 - **title** = the last `ai-title` entry's **`aiTitle`** field in the transcript (a
   Claude-generated title — verified present; filter by matching `sessionId` when a
   transcript has several), else the first user message. **last active** = mtime;
@@ -223,12 +230,8 @@ gone are dropped. Locally: **0.6s cold / 13ms warm / 4.1MB over 238 sessions**.
 - **Text** = `user`/`assistant` text blocks only, capped per message and per
   session. Transcripts are ~**4.5% human-readable text** (7.9MB of 177MB); the
   rest is tool results and file dumps, so the cap bounds the index cheaply.
-- **A session id does NOT identify a transcript.** The same id can exist under
-  two project dirs (verified locally: one 1.3MB file and a 119-byte one share an
-  id), so resolving an id by scanning dirs — as `history.ts`'s
-  `deleteTranscript` does — can hit the wrong file. A record therefore carries
-  its own `path` (the cache key already knew it), and delete uses that. Rows key
-  off the path too, since ids can collide.
+- **Ids don't identify transcripts (§6.2)** — a record carries its own `path`
+  (the cache key already knew it), delete uses that, and rows key off it too.
 - **Liveness is never indexed** — history is not live. `is:live` / `state:` come
   from §6.1 at render time, merged onto the record by `sessionId`, and narrowed
   through the shared `liveState()` allowlist so the hook's raw string can't
